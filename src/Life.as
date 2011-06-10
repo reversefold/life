@@ -6,6 +6,7 @@ package {
 	import flash.display.StageScaleMode;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
+	import flash.geom.Matrix;
 	import flash.geom.Rectangle;
 	import flash.utils.Dictionary;
 
@@ -23,21 +24,24 @@ package {
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
-			//addEventListener(MouseEvent.CLICK, onClick);
 		}
 		
 		private var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>();
 		private var bd : BitmapData;
 		private var ci : uint = 0;
 		private var cache : Dictionary;
+		private var cacheIdx : uint = 0;
 		private var allRect : Rectangle;
-		//private var go : Boolean = true;
-		
-		/*
-		private function onClick(e : MouseEvent) : void {
-			go = !go;
-		}
-		*/
+
+		private var fw : uint = CACHE_WIDTH + 2;
+		private var fh : uint = CACHE_HEIGHT + 2;
+		private var len : uint = fw * fh;
+		private var mn : uint = Math.pow(2, len);
+		private var c : Vector.<uint> = new Vector.<uint>(len);
+		private var n : Vector.<uint> = new Vector.<uint>(len);
+		private var cacheRect : Rectangle = new Rectangle(1, 1, fw, fh);
+		private var cacheRect2 : Rectangle = new Rectangle(fw + 2, 1, fw, fh);
+		private var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
 		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
@@ -50,9 +54,9 @@ package {
 			bv[1] = new Vector.<uint>(W * H, true);
 			
 			cache = new Dictionary();
-			fillCache(CACHE_WIDTH, CACHE_HEIGHT);
+			fillCache();
 			
-			draw(bv[ci]);
+			draw(bv[ci], allRect);
 		}
 		
 		private static function uintToVec(i : uint, vec : Vector.<uint>) : void {
@@ -71,25 +75,25 @@ package {
 			return i;
 		}
 		
-		private function fillCache(w : uint, h : uint) : void {
-			var fw : uint = w + 2;
-			var fh : uint = h + 2;
-			var len : uint = fw * fh;
-			var mn : uint = Math.pow(2, len);
-			var c : Vector.<uint> = new Vector.<uint>(len);
-			var n : Vector.<uint> = new Vector.<uint>(len);
-			for (var i : uint = 0; i < mn; ++i) {
-				uintToVec(i, c);
+		private function fillCache() : void {
+			//for (var i : uint = 0; i < mn; ++i) {
+				uintToVec(cacheIdx, c);
 				nextFromPrev(c, n, fw, fh);
-				cache[i] = vecToUint(n);
-			}
+				cache[cacheIdx] = vecToUint(n);
+				++cacheIdx;
+			//}
 		}
 		
 		private function onEnterFrame(e : Event) : void {
-			//if (go) {
+			if (cacheIdx < mn) {
+				fillCache();
+				bd.setVector(cacheRect, c);
+				//draw(c, cacheRect, cacheMat, 10, 10);
+				draw(n, cacheRect2, cacheMat);
+			} else {
 				nextFrame();
-				draw(bv[ci]);
-			//}
+				draw(bv[ci], allRect);
+			}
 		}
 		
 		private function nextFrame() : void {
@@ -141,10 +145,10 @@ package {
 			}
 		}
 		
-		private function draw(vec : Vector.<uint>, x : uint = 0, y : uint = 0) : void {
-			bd.setVector(allRect, vec);
+		private function draw(vec : Vector.<uint>, rect : Rectangle, mat : Matrix = null) : void {
+			bd.setVector(rect, vec);
 			DText.draw(bd, FPSCounter.update(), W - 1, 0, DText.RIGHT);
-			graphics.beginBitmapFill(bd);
+			graphics.beginBitmapFill(bd, mat);
 			graphics.drawRect(x, y, W, H);
 			graphics.endFill();
 		}
