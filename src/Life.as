@@ -1,4 +1,5 @@
 package {
+	import com.adobe.serialization.json.JSON;
 	import com.quasimondo.geom.ColorMatrix;
 	
 	import flash.display.Bitmap;
@@ -7,27 +8,32 @@ package {
 	import flash.display.StageAlign;
 	import flash.display.StageScaleMode;
 	import flash.events.Event;
+	import flash.events.IOErrorEvent;
 	import flash.events.MouseEvent;
 	import flash.filters.BitmapFilter;
 	import flash.filters.ColorMatrixFilter;
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
+	import flash.net.URLLoader;
+	import flash.net.URLRequest;
 	import flash.sampler.NewObjectSample;
 	import flash.utils.Dictionary;
 	import flash.utils.describeType;
 	
 	import mx.utils.StringUtil;
+	
+	import wumedia.parsers.swf.Data;
 
 	[SWF(frameRate="100",height="500",width="500")]
 	public class Life extends Sprite {
-		private static const W : uint = 200;
-		private static const H : uint = 200;
+		private static const W : uint = 500;
+		private static const H : uint = 500;
 		
-		private static const CACHE_WIDTH : uint = 3;
-		private static const CACHE_HEIGHT : uint = 3;
+		private static const CACHE_WIDTH : uint = 1;
+		private static const CACHE_HEIGHT : uint = 1;
 		
-		private static const COMPUTES_PER_FRAME : uint = 5000;
+		private static const COMPUTES_PER_FRAME : uint = 2000;
 		
 		private static const ALIVE : uint = 0xFF000000;
 		private static const DEAD : uint = 0xFFFFFFFF;
@@ -57,7 +63,7 @@ package {
 		private var c : Vector.<uint> = new Vector.<uint>(len, true);
 		private var n : Vector.<uint> = new Vector.<uint>(len, true);
 		private var cacheRect : Rectangle = new Rectangle(1, 1, fw, fh);
-		private var cacheRect2 : Rectangle = new Rectangle(fw + 2, 1, fw, fh);
+		private var cacheRect2 : Rectangle = new Rectangle(fw + 4, 1, fw, fh);
 		private var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
 		
 		private var masks : Chunk = new Chunk();
@@ -217,7 +223,15 @@ package {
 			//}
 		}
 		
+		private function onLoadComplete(e : Event) : void {
+			var o : Object = JSON.decode(e.target.data);
+			cache = o.cache;
+			states = o.states;
+		}
+		
+		private var l : URLLoader = null;
 		private function onEnterFrame(e : Event) : void {
+			/**/
 			if (cacheIdx < mn) {
 				var i : uint = 0;
 				while (i < COMPUTES_PER_FRAME && cacheIdx < mn) {
@@ -228,6 +242,17 @@ package {
 				bd.setVector(cacheRect, c);
 				//draw(c, cacheRect, cacheMat, 10, 10);
 				draw(n, cacheRect2, cacheMat);
+			/** /
+			if (states[0] == null) {
+				if (l == null) {
+					var u : URLRequest = new URLRequest("../assets/data/3x2.json");
+					l = new URLLoader(u);
+					l.addEventListener(Event.COMPLETE, onLoadComplete);
+					l.addEventListener(IOErrorEvent.IO_ERROR, function(e : Event) : void {
+						trace(e);
+					});
+				}
+			/**/
 			} else if (bbv[0] == null) {
 				/*
 				for each (maskName in maskNames) {
@@ -235,9 +260,12 @@ package {
 					_traceMask(states[16][maskName]);
 				}
 				*/
-
-				trace("[" + cache + "]");
-				trace("[" + states + "]");
+				trace('{');
+				trace('    "width": ' + CACHE_WIDTH + ',');
+				trace('    "height": ' + CACHE_HEIGHT + ',');
+				trace('    "cache": [' + cache + "],");
+				trace('    "states": [' + states + "]");
+				trace('}');
 				bbv[0] = new Vector.<uint>((W + 2) * (H + 2));
 				bbv[1] = new Vector.<uint>((W + 2) * (H + 2));
 				for (var y : uint = H / 4 + 1; y < H * 3 / 4 + 1; ++y) {
@@ -339,8 +367,8 @@ package {
 				DText.draw(bd2, String(cacheIdx - 1), 10 + 10 * fw / 2, 15 + 10 * fh, DText.CENTER);
 				DText.draw(bd2, String((cacheIdx - 1) & masks.inner), 10 + 10 * fw / 2, 35 + 10 * fh, DText.CENTER);
 
-				DText.draw(bd2, String(full), 20 + 10 * fw * 3 / 2, 15 + 10 * fh, DText.CENTER);
-				DText.draw(bd2, String(inner), 20 + 10 * fw * 3 / 2, 35 + 10 * fh, DText.CENTER);
+				DText.draw(bd2, String(full), 40 + 10 * fw * 3 / 2, 15 + 10 * fh, DText.CENTER);
+				DText.draw(bd2, String(inner), 40 + 10 * fw * 3 / 2, 35 + 10 * fh, DText.CENTER);
 				graphics.beginBitmapFill(bd2);
 				graphics.drawRect(0, 0, W, H);
 				graphics.endFill();
@@ -372,7 +400,7 @@ class Chunk extends Object {
 	public function toString() : String {
 		var v : Vector.<String> = new Vector.<String>();
 		for each (var n : String in describeType(this).variable.@name) {
-			v.push(n + ": " + (this[n] is Vector.<uint> ? "[" + this[n] + "]" : this[n]));
+			v.push('"' + n + '": ' + (this[n] is Vector.<uint> ? "[" + this[n] + "]" : this[n]));
 		}
 		return "{" + v.join(",") + "}";
 	}
