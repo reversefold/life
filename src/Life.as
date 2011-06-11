@@ -60,6 +60,7 @@ package {
 		
 		private var masks : Chunk = new Chunk();
 		private var maskOffsets : Chunk = new Chunk();
+		private var maskNeighborOffsets : Chunk = new Chunk();
 		private var maskNames : Vector.<String> = new Vector.<String>();
 		
 		private function onAddedToStage(e : Event) : void {
@@ -106,6 +107,19 @@ package {
 			for each (maskName in maskNames) {
 				traceMask(maskName);
 			}
+			
+			maskNeighborOffsets.bottomRight = -(
+				maskNeighborOffsets.topLeft = maskOffsets.bottomRight - maskOffsets.topLeft
+			);
+			maskNeighborOffsets.bottomLeft= -(
+				maskNeighborOffsets.topRight = maskOffsets.bottomLeft - maskOffsets.topRight
+			);
+			maskNeighborOffsets.bottom = -(
+				maskNeighborOffsets.top = maskOffsets.bottom - maskOffsets.top
+			);
+			maskNeighborOffsets.right = -(
+				maskNeighborOffsets.left = maskOffsets.right - maskOffsets.left
+			);
 			
 			/*
 			filters = [
@@ -184,7 +198,8 @@ package {
 					state = new Chunk();
 					state.vector = innerVector;
 					for each (maskName in maskNames) {
-						state[maskName] = masks[maskName] & full; // & inner would be the same since the masks are all for the inner rect
+						state[maskName] = (masks[maskName] & full) // & inner would be the same since the masks are all for the inner rect
+							<< maskNeighborOffsets[maskName]; //precalculate moving this masked bit to the place it needs to be for neighbor use
 					}
 					states[inner] = state;
 				}
@@ -206,6 +221,7 @@ package {
 				for (var y : uint = H / 4 + 1; y < H * 3 / 4 + 1; ++y) {
 					var yo : uint = (W + 2) * y;
 					for (var x : uint = W / 4 + 1; x < W * 3 / 4 + 1; ++x) {
+						//NOTE: this is specific to the 1x1 case
 						bbv[0][x + yo] = 16;
 					}
 				}
