@@ -24,8 +24,10 @@ package {
 		private static const W : uint = 200;
 		private static const H : uint = 200;
 		
-		private static const CACHE_WIDTH : uint = 1;
-		private static const CACHE_HEIGHT : uint = 1;
+		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_HEIGHT : uint = 3;
+		
+		private static const COMPUTES_PER_FRAME : uint = 5000;
 		
 		private static const ALIVE : uint = 0xFF000000;
 		private static const DEAD : uint = 0xFFFFFFFF;
@@ -47,9 +49,9 @@ package {
 		private var len : uint = fw * fh;
 		private var innerLen : uint = CACHE_WIDTH * CACHE_HEIGHT;
 		private var mn : uint = Math.pow(2, len);
-		
-		private var states : Vector.<Object> = new Vector.<Object>(Math.pow(2, len - fw - 1), true);
+
 		private var cache : Vector.<uint> = new Vector.<uint>(mn, true);
+		private var states : Vector.<Object> = new Vector.<Object>(Math.pow(2, len - fw - 1), true);
 		
 		private var cacheIdx : uint = 0;
 		private var c : Vector.<uint> = new Vector.<uint>(len, true);
@@ -61,6 +63,7 @@ package {
 		private var masks : Chunk = new Chunk();
 		private var maskOffsets : Chunk = new Chunk();
 		private var maskNeighborOffsets : Chunk = new Chunk();
+		private var maskNeighborOffsetNegative : Chunk = new Chunk();
 		private var maskNames : Vector.<String> = new Vector.<String>();
 		
 		private function onAddedToStage(e : Event) : void {
@@ -103,23 +106,21 @@ package {
 			for (y = 0; y < CACHE_HEIGHT; ++y, i += fw) {
 				masks.inner |= masks.top << i;
 			}
+			
+			maskNeighborOffsets.bottomRight 
+				 = maskNeighborOffsets.topLeft = maskOffsets.bottomRight - maskOffsets.topLeft + fw + 1;
+			maskNeighborOffsets.bottomLeft
+				 = maskNeighborOffsets.topRight = maskOffsets.bottomLeft - maskOffsets.topRight + fw - 1;
+			maskNeighborOffsets.bottom
+				 = maskNeighborOffsets.top = maskOffsets.bottom - maskOffsets.top + fw;
+			maskNeighborOffsets.right
+				 = maskNeighborOffsets.left = maskOffsets.right - maskOffsets.left + 1;
+			maskNeighborOffsetNegative.bottomRight = maskNeighborOffsetNegative.bottomLeft
+				= maskNeighborOffsetNegative.bottom = maskNeighborOffsetNegative.right = 1;
 
 			for each (maskName in maskNames) {
 				traceMask(maskName);
 			}
-			
-			maskNeighborOffsets.bottomRight = -(
-				maskNeighborOffsets.topLeft = maskOffsets.bottomRight - maskOffsets.topLeft
-			);
-			maskNeighborOffsets.bottomLeft= -(
-				maskNeighborOffsets.topRight = maskOffsets.bottomLeft - maskOffsets.topRight
-			);
-			maskNeighborOffsets.bottom = -(
-				maskNeighborOffsets.top = maskOffsets.bottom - maskOffsets.top
-			);
-			maskNeighborOffsets.right = -(
-				maskNeighborOffsets.left = maskOffsets.right - maskOffsets.left
-			);
 			
 			/*
 			filters = [
@@ -134,10 +135,13 @@ package {
 		}
 		
 		private function traceMask(maskName : String) : void {
-			var mask : uint = masks[maskName];
+			trace(maskName);
+			_traceMask(masks[maskName]);
+		}
+		
+		private function _traceMask(mask : uint) : void {
 			var str : String = mask.toString(2);
-			trace(maskName + "\n" +
-				(StringUtil.repeat("0", fw * fh - str.length) + str)
+			trace((StringUtil.repeat("0", fw * fh - str.length) + str)
 					.split('')
 					.reverse()
 					.join(" ")
@@ -198,8 +202,13 @@ package {
 					state = new Chunk();
 					state.vector = innerVector;
 					for each (maskName in maskNames) {
-						state[maskName] = (masks[maskName] & full) // & inner would be the same since the masks are all for the inner rect
-							<< maskNeighborOffsets[maskName]; //precalculate moving this masked bit to the place it needs to be for neighbor use
+						state[maskName] = (masks[maskName] & full); // & inner would be the same since the masks are all for the inner rect
+							//<< maskNeighborOffsets[maskName];
+						if (maskNeighborOffsetNegative[maskName] == 1) {
+							state[maskName] >>= maskNeighborOffsets[maskName]
+						} else {
+							state[maskName] <<= maskNeighborOffsets[maskName]; //precalculate moving this masked bit to the place it needs to be for neighbor use
+						}
 					}
 					states[inner] = state;
 				}
@@ -210,12 +219,25 @@ package {
 		
 		private function onEnterFrame(e : Event) : void {
 			if (cacheIdx < mn) {
-				fillCache();
+				var i : uint = 0;
+				while (i < COMPUTES_PER_FRAME && cacheIdx < mn) {
+					fillCache();
+					++i;
+				}
 				//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
 				bd.setVector(cacheRect, c);
 				//draw(c, cacheRect, cacheMat, 10, 10);
 				draw(n, cacheRect2, cacheMat);
 			} else if (bbv[0] == null) {
+				/*
+				for each (maskName in maskNames) {
+					trace("16 " + maskName);
+					_traceMask(states[16][maskName]);
+				}
+				*/
+
+				trace("[" + cache + "]");
+				trace("[" + states + "]");
 				bbv[0] = new Vector.<uint>((W + 2) * (H + 2));
 				bbv[1] = new Vector.<uint>((W + 2) * (H + 2));
 				for (var y : uint = H / 4 + 1; y < H * 3 / 4 + 1; ++y) {
@@ -231,9 +253,11 @@ package {
 				bv[1] = new Vector.<uint>(W * H, true);
 				draw(bv[ci], bd.rect);
 				*/
+			/*
 			} else {
 				nextFrame();
 				draw(bv[ci], bd.rect);
+			*/
 			}
 		}
 		
@@ -331,7 +355,9 @@ package {
 	}
 }
 
-class Chunk {
+import flash.utils.describeType;
+
+class Chunk extends Object {
 	public var inner : uint;
 	public var top : uint;
 	public var bottom : uint;
@@ -342,4 +368,12 @@ class Chunk {
 	public var bottomRight : uint;
 	public var bottomLeft : uint;
 	public var vector : Vector.<uint>;
+	
+	public function toString() : String {
+		var v : Vector.<String> = new Vector.<String>();
+		for each (var n : String in describeType(this).variable.@name) {
+			v.push(n + ": " + (this[n] is Vector.<uint> ? "[" + this[n] + "]" : this[n]));
+		}
+		return "{" + v.join(",") + "}";
+	}
 }
