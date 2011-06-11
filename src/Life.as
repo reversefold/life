@@ -27,12 +27,20 @@ package {
 
 	[SWF(frameRate="100",height="500",width="500")]
 	public class Life extends Sprite {
-		private static const W : uint = 500;
-		private static const H : uint = 500;
+		private static const W : uint = 1002;
+		private static const H : uint = 1000;
 		
 		private static const CACHE_WIDTH : uint = 1;
 		private static const CACHE_HEIGHT : uint = 1;
+
+		private static const CHUNKED_W : uint = W / CACHE_WIDTH;
+		private static const CHUNKED_H : uint = H / CACHE_HEIGHT;
 		
+		private static const F_CHUNKED_W : uint = CHUNKED_W + 2;
+		private static const F_CHUNKED_H : uint = CHUNKED_H + 2;
+		
+		private static const F_CHUNKED_LEN : uint = F_CHUNKED_W * F_CHUNKED_H;
+
 		private static const COMPUTES_PER_FRAME : uint = 2000;
 		
 		private static const ALIVE : uint = 0xFF000000;
@@ -49,6 +57,7 @@ package {
 		private var fpsbd : BitmapData;
 		private var bd2 : BitmapData;
 		private var ci : uint = 0;
+		private var nci : uint = 1;
 		
 		private var fw : uint = CACHE_WIDTH + 2;
 		private var fh : uint = CACHE_HEIGHT + 2;
@@ -57,7 +66,7 @@ package {
 		private var mn : uint = Math.pow(2, len);
 
 		private var cache : Vector.<uint> = new Vector.<uint>(mn, true);
-		private var states : Vector.<Object> = new Vector.<Object>(Math.pow(2, len - fw - 1), true);
+		private var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, len - fw - 1), true);
 		
 		private var cacheIdx : uint = 0;
 		private var c : Vector.<uint> = new Vector.<uint>(len, true);
@@ -225,13 +234,23 @@ package {
 		
 		private function onLoadComplete(e : Event) : void {
 			var o : Object = JSON.decode(e.target.data);
-			cache = o.cache;
-			states = o.states;
+			for (var i : uint = 0; i < cache.length; ++i) {
+				cache[i] = o.cache[i];
+			}
+			for (i = 0; i < states.length; ++i) {
+				var c : Chunk;
+				if (o.states[i] == null) {
+					c = null;
+				} else {
+					c = new Chunk(o.states[i]);
+				}
+				states[i] = c;
+			}
 		}
 		
 		private var l : URLLoader = null;
 		private function onEnterFrame(e : Event) : void {
-			/**/
+			/** /
 			if (cacheIdx < mn) {
 				var i : uint = 0;
 				while (i < COMPUTES_PER_FRAME && cacheIdx < mn) {
@@ -242,7 +261,23 @@ package {
 				bd.setVector(cacheRect, c);
 				//draw(c, cacheRect, cacheMat, 10, 10);
 				draw(n, cacheRect2, cacheMat);
-			/** /
+				/*
+				for each (maskName in maskNames) {
+					trace("16 " + maskName);
+					_traceMask(states[16][maskName]);
+				}
+				*/
+				/*
+				if (cacheIdx == mn) {
+					trace('{');
+					trace('    "width": ' + CACHE_WIDTH + ',');
+					trace('    "height": ' + CACHE_HEIGHT + ',');
+					trace('    "cache": [' + cache + "],");
+					trace('    "states": [' + states + "]");
+					trace('}');
+				}
+				*/
+			/**/
 			if (states[0] == null) {
 				if (l == null) {
 					var u : URLRequest = new URLRequest("../assets/data/3x2.json");
@@ -254,39 +289,87 @@ package {
 				}
 			/**/
 			} else if (bbv[0] == null) {
-				/*
-				for each (maskName in maskNames) {
-					trace("16 " + maskName);
-					_traceMask(states[16][maskName]);
-				}
-				*/
-				trace('{');
-				trace('    "width": ' + CACHE_WIDTH + ',');
-				trace('    "height": ' + CACHE_HEIGHT + ',');
-				trace('    "cache": [' + cache + "],");
-				trace('    "states": [' + states + "]");
-				trace('}');
-				bbv[0] = new Vector.<uint>((W + 2) * (H + 2));
-				bbv[1] = new Vector.<uint>((W + 2) * (H + 2));
-				for (var y : uint = H / 4 + 1; y < H * 3 / 4 + 1; ++y) {
-					var yo : uint = (W + 2) * y;
-					for (var x : uint = W / 4 + 1; x < W * 3 / 4 + 1; ++x) {
-						//NOTE: this is specific to the 1x1 case
-						bbv[0][x + yo] = 16;
+				bbv[0] = new Vector.<uint>(F_CHUNKED_LEN);
+				bbv[1] = new Vector.<uint>(F_CHUNKED_LEN);
+				for (var y : uint = CHUNKED_H / 4 + 1; y < CHUNKED_H * 3 / 4 + 1; ++y) {
+					var yo : uint = F_CHUNKED_W * y;
+					for (var x : uint = CHUNKED_W / 4 + 1; x < CHUNKED_W * 3 / 4 + 1; ++x) {
+						bbv[0][x + yo] = masks.inner;
 					}
 				}
 				/*
+				for (y = 0; y < F_CHUNKED_H; ++y) {
+					var s : String = "";
+					yo = F_CHUNKED_W * y;
+					for (x = 0; x < F_CHUNKED_W; ++x) {
+						s += bbv[0][x + yo] > 0 ? "1" : "0";
+					}
+					trace(s);
+				}
+				*/
+				drawChunked();
+				/** /
 				bd.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
 				bv[0] = bd.getVector(bd.rect);
 				bv[1] = new Vector.<uint>(W * H, true);
 				draw(bv[ci], bd.rect);
-				*/
+				/**/
+			} else {
+				//nextChunkedFrame();
+				drawChunked();
 			/*
 			} else {
 				nextFrame();
 				draw(bv[ci], bd.rect);
 			*/
 			}
+			drawFPS();
+		}
+		
+		private var r : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
+		private var i : uint;
+		private var m : uint;
+		private static var F_CHUNKED_W_R : uint = F_CHUNKED_W - 1;
+		private static var F_CHUNKED_LIVE_LEN : uint = F_CHUNKED_LEN - F_CHUNKED_W;
+		private function drawChunked() : void {
+			r.x = 0;
+			r.y = 0;
+			c = bbv[ci];
+			n = bbv[nci];
+			for (i = F_CHUNKED_W + 1; i < F_CHUNKED_LIVE_LEN; ++i) {
+				if ((i % F_CHUNKED_W) == F_CHUNKED_W_R) {
+					//skips m == 0
+					++i;
+					continue;
+				}
+				bd.setVector(r, states[c[i]].vector);
+				n[i] = cache[
+					c[i]
+					+ states[c[i - F_CHUNKED_W]].bottom
+					+ states[c[i + F_CHUNKED_W]].top
+					+ states[c[i - 1]].right
+					+ states[c[i + 1]].left
+					
+					+ states[c[i - F_CHUNKED_W - 1]].bottomRight
+					+ states[c[i - F_CHUNKED_W + 1]].bottomLeft
+					+ states[c[i + F_CHUNKED_W - 1]].topRight
+					+ states[c[i + F_CHUNKED_W + 1]].topLeft
+				];
+				r.x += CACHE_WIDTH;
+				r.x %= W;
+				if (r.x == 0) {
+					r.y += CACHE_HEIGHT;
+				}
+			}
+			/**/
+			graphics.clear();
+			graphics.beginBitmapFill(bd);
+			graphics.drawRect(0, 0, W, H);
+			graphics.endFill();
+			/**/
+			i = ci;
+			ci = nci;
+			nci = i;
 		}
 		
 		private function nextFrame() : void {
@@ -373,12 +456,16 @@ package {
 				graphics.drawRect(0, 0, W, H);
 				graphics.endFill();
 			}
+			drawFPS();
+			/**/
+		}
+		
+		private function drawFPS() : void {
 			fpsbd.fillRect(fpsbd.rect, 0x0);
 			DText.draw(fpsbd, FPSCounter.update(), fpsbd.width - 1, 0, DText.RIGHT);
 			graphics.beginBitmapFill(fpsbd);
 			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 			graphics.endFill();
-			/**/
 		}
 	}
 }
@@ -386,6 +473,19 @@ package {
 import flash.utils.describeType;
 
 class Chunk extends Object {
+	public function Chunk(o : Object = null) {
+		if (o == null) {
+			return;
+		}
+		for each (var n : String in describeType(this).variable.@name) {
+			if (n == "vector") {
+				this[n] = Vector.<uint>(o[n]);
+			} else {
+				this[n] = o[n];
+			}
+		}
+	}
+	
 	public var inner : uint;
 	public var top : uint;
 	public var bottom : uint;
