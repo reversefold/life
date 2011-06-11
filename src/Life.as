@@ -15,6 +15,9 @@ package {
 	import flash.geom.Rectangle;
 	import flash.sampler.NewObjectSample;
 	import flash.utils.Dictionary;
+	import flash.utils.describeType;
+	
+	import mx.utils.StringUtil;
 
 	[SWF(frameRate="100",height="500",width="500")]
 	public class Life extends Sprite {
@@ -45,7 +48,7 @@ package {
 		private var innerLen : uint = CACHE_WIDTH * CACHE_HEIGHT;
 		private var mn : uint = Math.pow(2, len);
 		
-		private var states : Vector.<Object> = new Vector.<Object>(mn, true);
+		private var states : Vector.<Object> = new Vector.<Object>(Math.pow(2, len - fw - 1), true);
 		private var cache : Vector.<uint> = new Vector.<uint>(mn, true);
 		
 		private var cacheIdx : uint = 0;
@@ -57,6 +60,7 @@ package {
 
 		private var map : Vector.<Object>;
 		
+		/*
 		//mask for the inner rect
 		private var innerMask : uint = 0;
 		
@@ -85,6 +89,9 @@ package {
 				"ilMask",
 			]
 		);
+		*/
+		
+		private var masks : Chunk = new Chunk();
 		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
@@ -94,23 +101,28 @@ package {
 			bd2 = new BitmapData(W + 2, H + 2);
 			fpsbd = new BitmapData(100, 30);
 			
+			masks.topLeft = 1 << (1 + fw);
+			masks.topRight = 1 << (2 * fw - 2);
+			masks.bottomRight = 1 << (len - fw - 2);
+			masks.bottomLeft = 1 << (len - 2 * fw + 1);
+			
 			for (var y : uint = 1; y < fh - 1; ++y) {
 				var yo : uint = y * fw;
 				for (var x : uint = 1; x < fw - 1; ++x) {
-					innerMask |= (1 << (x + yo));
+					masks.inner |= (1 << (x + yo));
 				}
 			}
 			for (x = 1; x < fw - 1; ++x) {
-				itMask |= (1 << (x + fw));
+				masks.top |= (1 << (x + fw));
 			}
-			ibMask = itMask << (fw * (CACHE_HEIGHT - 1));
+			masks.bottom = masks.top << (fw * (CACHE_HEIGHT - 1));
 
 			for (y = 1; y < fh - 1; ++y) {
-				ilMask |= (1 << (y * fh + 1));
+				masks.left |= (1 << (y * fh + 1));
 			}
-			irMask = ilMask << (CACHE_WIDTH - 1);
+			masks.right = masks.left << (CACHE_WIDTH - 1);
 
-			for each (var maskName : String in masks) {
+			for each (var maskName : String in describeType(masks).variable.@name) {
 				traceMask(maskName);
 			}
 			/*
@@ -126,7 +138,18 @@ package {
 		}
 		
 		private function traceMask(maskName : String) : void {
-			var mask : uint = this[maskName];
+			var mask : uint = masks[maskName];
+			var str : String = mask.toString(2);
+			trace(maskName + "\n" +
+				(StringUtil.repeat("0", fw * fh - str.length) + str)
+					.split('')
+					.reverse()
+					.join(" ")
+					.split(new RegExp("(" + StringUtil.repeat(". ", fw) + ")"))
+					.join("\n ")
+					.replace(/\n \n/g, "\n")
+					.substr(1));
+			/*
 			var line : String = maskName;
 			for (var i : uint = 0; i < len; ++i) {
 				if (i % fw == 0) {
@@ -136,6 +159,7 @@ package {
 				line += " " + ((mask >> i) & 1);
 			}
 			trace(line);
+			*/
 		}
 		
 		private static function uintToVec(i : uint, vec : Vector.<uint>) : void {
@@ -164,7 +188,7 @@ package {
 				uintToVec(cacheIdx, c);
 				nextFromPrev(c, n, fw, fh);
 				full = vecToUint(n);
-				inner = full & innerMask;
+				inner = full & masks.inner;
 				if (states[inner] == null) {
 					innerVector = new Vector.<uint>(innerLen, true);
 					var i : uint = 0;
@@ -296,6 +320,9 @@ package {
 			/**/
 			if (cacheIdx < mn) {
 				bd2.fillRect(bd2.rect, 0x0);
+				DText.draw(bd2, String(cacheIdx - 1), 10 + 10 * fw / 2, 15 + 10 * fh, DText.CENTER);
+				DText.draw(bd2, String((cacheIdx - 1) & masks.inner), 10 + 10 * fw / 2, 35 + 10 * fh, DText.CENTER);
+
 				DText.draw(bd2, String(full), 20 + 10 * fw * 3 / 2, 15 + 10 * fh, DText.CENTER);
 				DText.draw(bd2, String(inner), 20 + 10 * fw * 3 / 2, 35 + 10 * fh, DText.CENTER);
 				graphics.beginBitmapFill(bd2);
@@ -310,4 +337,16 @@ package {
 			/**/
 		}
 	}
+}
+
+class Chunk {
+	public var inner : uint;
+	public var top : uint;
+	public var bottom : uint;
+	public var left : uint;
+	public var right : uint;
+	public var topRight : uint;
+	public var topLeft : uint;
+	public var bottomRight : uint;
+	public var bottomLeft : uint;
 }
