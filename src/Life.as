@@ -57,41 +57,10 @@ package {
 		private var cacheRect : Rectangle = new Rectangle(1, 1, fw, fh);
 		private var cacheRect2 : Rectangle = new Rectangle(fw + 2, 1, fw, fh);
 		private var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
-
-		private var map : Vector.<Object>;
-		
-		/*
-		//mask for the inner rect
-		private var innerMask : uint = 0;
-		
-		//masks for the inner rect corners
-		private var itlMask : uint = 1 << (1 + fw);
-		private var itrMask : uint = 1 << (2 * fw - 2);
-		private var ibrMask : uint = 1 << (len - fw - 2);
-		private var iblMask : uint = 1 << (len - 2 * fw + 1);
-
-		//masks for each side of the inner rect
-		private var itMask : uint = 0;
-		private var irMask : uint = 0;
-		private var ibMask : uint = 0;
-		private var ilMask : uint = 0;
-		
-		private var masks : Vector.<String> = Vector.<String>(
-			[
-				"innerMask",
-				"itlMask",
-				"itrMask",
-				"ibrMask",
-				"iblMask",
-				"itMask",
-				"irMask",
-				"ibMask",
-				"ilMask",
-			]
-		);
-		*/
 		
 		private var masks : Chunk = new Chunk();
+		private var maskOffsets : Chunk = new Chunk();
+		private var maskNames : Vector.<String> = new Vector.<String>();
 		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
@@ -101,30 +70,43 @@ package {
 			bd2 = new BitmapData(W + 2, H + 2);
 			fpsbd = new BitmapData(100, 30);
 			
-			masks.topLeft = 1 << (1 + fw);
-			masks.topRight = 1 << (2 * fw - 2);
-			masks.bottomRight = 1 << (len - fw - 2);
-			masks.bottomLeft = 1 << (len - 2 * fw + 1);
-			
-			for (var y : uint = 1; y < fh - 1; ++y) {
-				var yo : uint = y * fw;
-				for (var x : uint = 1; x < fw - 1; ++x) {
-					masks.inner |= (1 << (x + yo));
+			for each (maskName in describeType(masks).variable.@name) {
+				if (maskName == "vector") {
+					continue;
 				}
+				maskNames.push(maskName);
 			}
-			for (x = 1; x < fw - 1; ++x) {
-				masks.top |= (1 << (x + fw));
-			}
-			masks.bottom = masks.top << (fw * (CACHE_HEIGHT - 1));
 
-			for (y = 1; y < fh - 1; ++y) {
-				masks.left |= (1 << (y * fh + 1));
-			}
-			masks.right = masks.left << (CACHE_WIDTH - 1);
+			maskOffsets.topLeft = maskOffsets.top = maskOffsets.left = (1 + fw);
+			maskOffsets.topRight = maskOffsets.right = (2 * fw - 2);
+			maskOffsets.bottomLeft = maskOffsets.bottom = (len - 2 * fw + 1);
+			maskOffsets.bottomRight = (len - fw - 2);
 
-			for each (var maskName : String in describeType(masks).variable.@name) {
+			masks.topLeft = masks.topRight = masks.bottomLeft = masks.bottomRight = 1;
+			for (var x : uint = 0; x < CACHE_WIDTH; ++x) {
+				masks.top |= 1 << x;
+			}
+			masks.bottom = masks.top;
+			
+			var i : uint = 0;
+			for (var y : uint = 0; y < CACHE_HEIGHT; ++y, i += fw) {
+				masks.left |= 1 << i;
+			}
+			masks.right = masks.left;
+			
+			for each (maskName in maskNames) {
+				masks[maskName] <<= maskOffsets[maskName];
+			}
+			
+			i = 0;
+			for (y = 0; y < CACHE_HEIGHT; ++y, i += fw) {
+				masks.inner |= masks.top << i;
+			}
+
+			for each (maskName in maskNames) {
 				traceMask(maskName);
 			}
+			
 			/*
 			filters = [
 				compressFilter,
@@ -180,7 +162,7 @@ package {
 		
 		private var full : uint;
 		private var inner : uint;
-		private var state : Object;
+		private var state : Chunk;
 		private var maskName : String;
 		private var innerVector : Vector.<uint>;
 		private function fillCache() : void {
@@ -199,11 +181,10 @@ package {
 							++i;
 						}
 					}
-					state = {
-						vec: innerVector
-					};
-					for each (maskName in masks) {
-						state[maskName] = this[maskName] & full; // & inner would be the same since the masks are all for the inner rect
+					state = new Chunk();
+					state.vector = innerVector;
+					for each (maskName in maskNames) {
+						state[maskName] = masks[maskName] & full; // & inner would be the same since the masks are all for the inner rect
 					}
 					states[inner] = state;
 				}
@@ -219,8 +200,7 @@ package {
 				bd.setVector(cacheRect, c);
 				//draw(c, cacheRect, cacheMat, 10, 10);
 				draw(n, cacheRect2, cacheMat);
-			} else if (map == null) {
-				initMap();
+			} else if (bbv[0] == null) {
 				bbv[0] = new Vector.<uint>((W + 2) * (H + 2));
 				bbv[1] = new Vector.<uint>((W + 2) * (H + 2));
 				for (var y : uint = H / 4 + 1; y < H * 3 / 4 + 1; ++y) {
@@ -239,10 +219,6 @@ package {
 				nextFrame();
 				draw(bv[ci], bd.rect);
 			}
-		}
-		
-		private function initMap() : void {
-			map = new Vector.<Object>(W * H, true);
 		}
 		
 		private function nextFrame() : void {
@@ -349,4 +325,5 @@ class Chunk {
 	public var topLeft : uint;
 	public var bottomRight : uint;
 	public var bottomLeft : uint;
+	public var vector : Vector.<uint>;
 }
