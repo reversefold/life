@@ -1,7 +1,7 @@
 package {
-	import com.adobe.serialization.json.JSON;
-	import com.adobe.serialization.json.JSONDecoder;
 	import com.quasimondo.geom.ColorMatrix;
+	import com.reversefold.json.JSON;
+	import com.reversefold.json.JSONDecoderAsync;
 	
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
@@ -51,7 +51,7 @@ package {
 		
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
-			addEventListener(Event.ENTER_FRAME, onEnterFrame);
+			//addEventListener(Event.ENTER_FRAME, onEnterFrame);
 		}
 		
 		private var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
@@ -163,6 +163,10 @@ package {
 			cm.adjustSaturation(-100);
 			invertFilter = new ColorMatrixFilter(cm.matrix);
 			*/
+			
+			var j : JSONDecoderAsync = new JSONDecoderAsync(JSON.encode([1, 2, 3]), true);
+			var v : * = j.getValue();
+			trace(v);
 		}
 		
 		private function traceMask(maskName : String) : void {
@@ -248,9 +252,9 @@ package {
 			//}
 		}
 		
-		private var d : JSONDecoder;
+		private var d : JSONDecoderAsync;
 		private function onLoadComplete(e : Event) : void {
-			d = new JSONDecoder(e.target.data, true);
+			d = new JSONDecoderAsync(e.target.data, true);
 			
 			var o : Object = JSON.decode(e.target.data);
 			for (var i : uint = 0; i < cache.length; ++i) {
