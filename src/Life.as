@@ -1,5 +1,6 @@
 package {
 	import com.adobe.serialization.json.JSON;
+	import com.adobe.serialization.json.JSONDecoder;
 	import com.quasimondo.geom.ColorMatrix;
 	
 	import flash.display.Bitmap;
@@ -9,12 +10,14 @@ package {
 	import flash.display.StageScaleMode;
 	import flash.events.Event;
 	import flash.events.IOErrorEvent;
+	import flash.events.KeyboardEvent;
 	import flash.events.MouseEvent;
 	import flash.filters.BitmapFilter;
 	import flash.filters.ColorMatrixFilter;
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
+	import flash.net.FileReference;
 	import flash.net.URLLoader;
 	import flash.net.URLRequest;
 	import flash.sampler.NewObjectSample;
@@ -27,11 +30,11 @@ package {
 
 	[SWF(frameRate="100",height="500",width="500")]
 	public class Life extends Sprite {
-		private static const W : uint = 1002;
-		private static const H : uint = 1000;
+		private static const W : uint = 402;//1002;
+		private static const H : uint = 400;//1002;
 		
-		private static const CACHE_WIDTH : uint = 1;
-		private static const CACHE_HEIGHT : uint = 1;
+		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_HEIGHT : uint = 3;
 
 		private static const CHUNKED_W : uint = W / CACHE_WIDTH;
 		private static const CHUNKED_H : uint = H / CACHE_HEIGHT;
@@ -41,7 +44,7 @@ package {
 		
 		private static const F_CHUNKED_LEN : uint = F_CHUNKED_W * F_CHUNKED_H;
 
-		private static const COMPUTES_PER_FRAME : uint = 2000;
+		private static const COMPUTES_PER_FRAME : uint = 1;
 		
 		private static const ALIVE : uint = 0xFF000000;
 		private static const DEAD : uint = 0xFFFFFFFF;
@@ -81,9 +84,22 @@ package {
 		private var maskNeighborOffsetNegative : Chunk = new Chunk();
 		private var maskNames : Vector.<String> = new Vector.<String>();
 		
+		private var data : String = null;
+		private var f : FileReference;
+		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
+
+			stage.addEventListener(KeyboardEvent.KEY_UP, function(e : KeyboardEvent) : void {
+				trace("Pressed " + e.charCode);
+				if (data == null || (e.charCode != 's'.charCodeAt() && e.charCode != 'S'.charCodeAt())) {
+					return;
+				}
+				var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
+				f = new FileReference();
+				f.save(data, fn);
+			});
 			
 			bd = new BitmapData(W + 2, H + 2);
 			bd2 = new BitmapData(W + 2, H + 2);
@@ -132,11 +148,11 @@ package {
 				 = maskNeighborOffsets.left = maskOffsets.right - maskOffsets.left + 1;
 			maskNeighborOffsetNegative.bottomRight = maskNeighborOffsetNegative.bottomLeft
 				= maskNeighborOffsetNegative.bottom = maskNeighborOffsetNegative.right = 1;
-
+			/*
 			for each (maskName in maskNames) {
 				traceMask(maskName);
 			}
-			
+			*/
 			/*
 			filters = [
 				compressFilter,
@@ -232,7 +248,10 @@ package {
 			//}
 		}
 		
+		private var d : JSONDecoder;
 		private function onLoadComplete(e : Event) : void {
+			d = new JSONDecoder(e.target.data, true);
+			
 			var o : Object = JSON.decode(e.target.data);
 			for (var i : uint = 0; i < cache.length; ++i) {
 				cache[i] = o.cache[i];
@@ -266,21 +285,23 @@ package {
 					trace("16 " + maskName);
 					_traceMask(states[16][maskName]);
 				}
-				*/
-				/*
+				/**/
+				/** /
 				if (cacheIdx == mn) {
-					trace('{');
-					trace('    "width": ' + CACHE_WIDTH + ',');
-					trace('    "height": ' + CACHE_HEIGHT + ',');
-					trace('    "cache": [' + cache + "],");
-					trace('    "states": [' + states + "]");
-					trace('}');
+					data = 
+						"{\n" +
+						'    "width": ' + CACHE_WIDTH + ",\n" +
+						'    "height": ' + CACHE_HEIGHT + ",\n" +
+						'    "cache": [' + cache + "],\n" +
+						'    "states": [' + states + "]\n" +
+						'}';
+					trace(data);
 				}
-				*/
+				/**/
 			/**/
 			if (states[0] == null) {
 				if (l == null) {
-					var u : URLRequest = new URLRequest("../assets/data/3x2.json");
+					var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
 					l = new URLLoader(u);
 					l.addEventListener(Event.COMPLETE, onLoadComplete);
 					l.addEventListener(IOErrorEvent.IO_ERROR, function(e : Event) : void {
