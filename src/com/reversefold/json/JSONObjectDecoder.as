@@ -1,27 +1,20 @@
 package com.reversefold.json {
 
     public class JSONObjectDecoder extends JSONValueDecoder {
-		private var o : Object = null;
-		
-		// store the string part of an object member so
-		// that we can assign it a value in the object
-		private var key : String = null;
-		
-		private var element : JSONValueDecoder = null;
-		
-		override protected function reset(t : JSONTokenizer, ... args) : void {
-			super.reset(t);
-			o = null;
-			key = null;
-			element = null;
-		}
-
-		public function JSONObjectDecoder(t : JSONTokenizer) {
+        public function JSONObjectDecoder(t : JSONTokenizer) {
             super(t);
 			
 			//_value = parseObject();
 			//_done = true;
         }
+		
+		private var o : Object = null;
+		
+		// store the string part of an object member so
+		// that we can assign it a value in the object
+		private var key : String;
+		
+		private var element : JSONValueDecoder = null;
 		
 		private function __done() : void {
 			_value = o;
@@ -81,7 +74,6 @@ package com.reversefold.json {
 			}
 			
 			o[key] = element.value;
-			JSONValueDecoder.reclaimInstance(element);
 			element = null;
 			
 			// move past the value to see what's next
