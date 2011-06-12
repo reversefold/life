@@ -665,7 +665,7 @@ package {
 			graphics.drawRect(int(W / 4), y, int(W / 2), 20);
 			graphics.lineStyle();
 			graphics.beginFill(0x0);
-			graphics.drawRect(int(W / 4 + 2), y + 2, int(W / 2 - 4) * cur / tot, 17);
+			graphics.drawRect(int(W / 4 + 2), y + 2, int(W / 2 - 3) * cur / tot, 17);
 			graphics.endFill();
 			
 			DText.draw(bd2, Number(cur * 100 / tot).toFixed(1) + "%", int(W / 2), y + 2, DText.CENTER);
