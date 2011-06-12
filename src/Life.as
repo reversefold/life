@@ -296,22 +296,22 @@ package {
 					});
 				} else if (d != null) {
 					if (dataObj == null && !d.done) {
-						trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
-						for (i = 0; i < 10000; ++i) {
+						//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
+						for (i = 0; i < 3000; ++i) {
 							if (d.loop()) {
 								dataObj = d.getValue();
 								break;
 							}
 						}
 					} else if (cacheLoadIdx < cache.length) {
-						trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
-						for (i = 0; i < 5000 && cacheLoadIdx < cache.length; ++i) {
+						//trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
+						for (i = 0; i < 3000 && cacheLoadIdx < cache.length; ++i) {
 							cache[cacheLoadIdx] = dataObj.cache[cacheLoadIdx];
 							++cacheLoadIdx;
 						}
 					} else if (stateLoadIdx < states.length) {
-						trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
-						for (i = 0; i < 1000 && stateLoadIdx < states.length; ++i) {
+						//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
+						for (i = 0; i < 3000 && stateLoadIdx < states.length; ++i) {
 							var ch : Chunk;
 							if (dataObj.states[stateLoadIdx] == null) {
 								ch = null;
@@ -416,6 +416,8 @@ package {
 		private var r : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
 		private var i : uint;
 		private var m : uint;
+		private var upIdx : uint;
+		private var downIdx : uint;
 		private static var F_CHUNKED_W_R : uint = F_CHUNKED_W - 1;
 		private static var F_CHUNKED_LIVE_LEN : uint = F_CHUNKED_LEN - F_CHUNKED_W;
 		private function drawChunked() : void {
@@ -431,17 +433,19 @@ package {
 					continue;
 				}
 				bd.setVector(r, states[c[i]].vector);
+				upIdx = i - F_CHUNKED_W;
+				downIdx = i + F_CHUNKED_W;
 				n[i] = cache[
 					c[i]
-					+ states[c[i - F_CHUNKED_W]].bottom
-					+ states[c[i + F_CHUNKED_W]].top
+					+ states[c[upIdx]].bottom
+					+ states[c[downIdx]].top
 					+ states[c[i - 1]].right
 					+ states[c[i + 1]].left
 					
-					+ states[c[i - F_CHUNKED_W - 1]].bottomRight
-					+ states[c[i - F_CHUNKED_W + 1]].bottomLeft
-					+ states[c[i + F_CHUNKED_W - 1]].topRight
-					+ states[c[i + F_CHUNKED_W + 1]].topLeft
+					+ states[c[upIdx - 1]].bottomRight
+					+ states[c[upIdx + 1]].bottomLeft
+					+ states[c[downIdx - 1]].topRight
+					+ states[c[downIdx + 1]].topLeft
 				];
 				r.x += CACHE_WIDTH;
 				r.x %= W;
@@ -554,7 +558,7 @@ package {
 			graphics.lineStyle(1, 0);
 			graphics.drawRect(int(W / 4), y, int(W / 2), 20);
 			graphics.lineStyle();
-			graphics.beginFill(0x101060);
+			graphics.beginFill(0x0);
 			graphics.drawRect(int(W / 4 + 2), y + 2, int(W / 2 - 2) * cur / tot, 17);
 			graphics.endFill();
 			
