@@ -23,6 +23,7 @@ package {
 	import flash.sampler.NewObjectSample;
 	import flash.utils.Dictionary;
 	import flash.utils.describeType;
+	import flash.utils.getTimer;
 	
 	import mx.utils.StringUtil;
 	
@@ -277,6 +278,7 @@ package {
 		private function onLoadComplete(e : Event) : void {
 			trace("file loaded");
 			d = new JSONDecoderAsync(e.target.data, true);
+			jsonStart = getTimer();
 			/*
 			var o : Object = JSON.decode(e.target.data);
 			for (var i : uint = 0; i < cache.length; ++i) {
@@ -314,6 +316,7 @@ package {
 			fileSize = e.bytesTotal;
 		}
 		
+		private var jsonStart : * = null;
 		private function onEnterFrame(e : Event) : void {
 			if (LOAD && !loaded) {
 				bd2.fillRect(bd2.rect, 0x0);
@@ -329,6 +332,7 @@ package {
 						//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
 						for (i = 0; i < 150000; ++i) {
 							if (d.loop()) {
+								trace(((getTimer() - jsonStart) / 1000).toFixed(4) + "s parsing JSON");
 								dataObj = d.getValue();
 								break;
 							}

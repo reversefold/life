@@ -1,13 +1,27 @@
 package com.reversefold.json {
+	import avmplus.getQualifiedClassName;
+	
+	import flash.utils.Dictionary;
+	import flash.utils.getDefinitionByName;
 
     public class JSONValueDecoder {
+		private static const CACHE_SIZE : uint = 10;
+		
         protected var tokenizer : JSONTokenizer;
-        protected var _value : *;
+        protected var _value : * = null;
         protected var _done : Boolean = false;
 
         /** The current token from the tokenizer */
-        protected var token : JSONToken;
+        protected var token : JSONToken = null;
 
+		protected function reset(t : JSONTokenizer, ... args) : void {
+			tokenizer = t;
+			
+			_value = null;
+			_done = false;
+			token = null;
+		}
+		
         public function JSONValueDecoder(t : JSONTokenizer) {
             tokenizer = t;
         }
@@ -51,6 +65,39 @@ package com.reversefold.json {
                 tokenizer.parseError("Unexpected end of input");
             }
         }
+		
+		private static var _cache : Dictionary = new Dictionary();
+		public static function getInstance(c : Class, t : JSONTokenizer, ... args) : JSONValueDecoder {
+			var instance : JSONValueDecoder;
+			if (_cache[c] == null) {
+				_cache[c] = [];
+			}
+			if (_cache[c].length > 0) {
+				instance = _cache[c].pop();
+				var targs : Array = [ t ].concat(args);
+				instance.reset.apply(instance, targs);
+			} else {
+				//hack, but oh well
+				if (c == JSONValue) {
+					instance = new JSONValue(t, args[0]);
+				} else {
+					instance = new c(t);
+				}
+			}
+			return instance;
+		}
+		public static function reclaimInstance(i : JSONValueDecoder) : void {
+			var c : Class = Class(getDefinitionByName(getQualifiedClassName(i)));
+			if (_cache[c] == null) {
+				_cache[c] = [];
+			}
+			if (_cache[c].length < CACHE_SIZE) {
+				_cache[c].push(i);
+			}
+		}
+		public static function emptyCache() : void {
+			_cache = new Dictionary();
+		}
 
 		public function loop() : Boolean {
 			throw new Error("Implement me!");
@@ -64,11 +111,11 @@ package com.reversefold.json {
 
             switch (token.type) {
                 case JSONTokenType.LEFT_BRACE:  {
-                    return new JSONObjectDecoder(tokenizer);
+                    return getInstance(JSONObjectDecoder, tokenizer);
                 }
 
                 case JSONTokenType.LEFT_BRACKET:  {
-                    return new JSONArrayDecoder(tokenizer);
+                    return getInstance(JSONArrayDecoder, tokenizer);
                 }
 
                 case JSONTokenType.STRING:
@@ -76,12 +123,12 @@ package com.reversefold.json {
                 case JSONTokenType.TRUE:
                 case JSONTokenType.FALSE:
                 case JSONTokenType.NULL:  {
-                    return new JSONValue(token.value);
+                    return getInstance(JSONValue, tokenizer, token.value);
                 }
 
                 case JSONTokenType.NAN:  {
                     if (!tokenizer.strict) {
-                        return new JSONValue(token.value);
+                        return getInstance(JSONValue, tokenizer, token.value);
                     } else {
                         tokenizer.parseError("Unexpected " + token.value);
                     }

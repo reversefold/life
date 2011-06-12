@@ -34,6 +34,10 @@ package com.reversefold.json {
 
     public class JSONDecoderAsync {
 
+		public static function emptyCache() : void {
+			JSONValueDecoder.emptyCache();
+		}
+		
         /**
          * Flag indicating if the parser should be strict about the format
          * of the JSON string it is attempting to decode.

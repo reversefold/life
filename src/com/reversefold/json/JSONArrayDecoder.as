@@ -1,15 +1,23 @@
 package com.reversefold.json {
 
     public class JSONArrayDecoder extends JSONValueDecoder {
-        public function JSONArrayDecoder(t : JSONTokenizer) {
+		private static const CACHE_SIZE : uint = 10;
+		
+		private var a : Array = null;
+		private var element : JSONValueDecoder = null;		
+		
+		override protected function reset(t : JSONTokenizer, ... args) : void {
+			super.reset(t);
+			a = null;
+			element = null;
+		}
+
+		public function JSONArrayDecoder(t : JSONTokenizer) {
             super(t);
 			
 			//_value = parseArray();
 			//_done = true;
         }
-
-		private var a : Array = null;
-		private var element : JSONValueDecoder = null;		
 		
 		override public function loop() : Boolean {
 			if (a == null) {
@@ -79,6 +87,7 @@ package com.reversefold.json {
 			}
 			
 			a.push(element.value);
+			JSONValueDecoder.reclaimInstance(element);
 			element = null;
 
             // after the value there should be a ] or a ,
