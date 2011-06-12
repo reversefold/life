@@ -23,10 +23,6 @@ package com.reversefold.json {
             return _done;
         }
 
-        public function next() : Boolean {
-            return !done;
-        }
-
         /**
          * Returns the next token from the tokenzier reading
          * the JSON string
@@ -56,19 +52,23 @@ package com.reversefold.json {
             }
         }
 
+		public function loop() : Boolean {
+			throw new Error("Implement me!");
+		}
+		
         /**
          * Attempt to parse a value
          */
-        public static function parseValue(token : JSONToken, tokenizer : JSONTokenizer) : Object {
+        public static function parseValue(token : JSONToken, tokenizer : JSONTokenizer) : JSONValueDecoder {
             checkValidToken(token, tokenizer);
 
             switch (token.type) {
                 case JSONTokenType.LEFT_BRACE:  {
-                    return new JSONObjectDecoder(tokenizer).value;
+                    return new JSONObjectDecoder(tokenizer);
                 }
 
                 case JSONTokenType.LEFT_BRACKET:  {
-                    return new JSONArrayDecoder(tokenizer).value;
+                    return new JSONArrayDecoder(tokenizer);
                 }
 
                 case JSONTokenType.STRING:
@@ -76,12 +76,12 @@ package com.reversefold.json {
                 case JSONTokenType.TRUE:
                 case JSONTokenType.FALSE:
                 case JSONTokenType.NULL:  {
-                    return token.value;
+                    return new JSONValue(token.value);
                 }
 
                 case JSONTokenType.NAN:  {
                     if (!tokenizer.strict) {
-                        return token.value;
+                        return new JSONValue(token.value);
                     } else {
                         tokenizer.parseError("Unexpected " + token.value);
                     }

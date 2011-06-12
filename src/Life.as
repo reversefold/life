@@ -1,5 +1,4 @@
 package {
-	import com.quasimondo.geom.ColorMatrix;
 	import com.reversefold.json.JSON;
 	import com.reversefold.json.JSONDecoderAsync;
 	
@@ -26,15 +25,13 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	import wumedia.parsers.swf.Data;
-
-	[SWF(frameRate="100",height="500",width="500")]
+	[SWF(frameRate="100", width="504", height="504")]
 	public class Life extends Sprite {
-		private static const W : uint = 402;//1002;
-		private static const H : uint = 400;//1002;
+		private static const W : uint = 504;
+		private static const H : uint = 504;
 		
-		private static const CACHE_WIDTH : uint = 3;
-		private static const CACHE_HEIGHT : uint = 3;
+		private static const CACHE_WIDTH : uint = 2;
+		private static const CACHE_HEIGHT : uint = 2;
 
 		private static const CHUNKED_W : uint = W / CACHE_WIDTH;
 		private static const CHUNKED_H : uint = H / CACHE_HEIGHT;
@@ -43,15 +40,17 @@ package {
 		private static const F_CHUNKED_H : uint = CHUNKED_H + 2;
 		
 		private static const F_CHUNKED_LEN : uint = F_CHUNKED_W * F_CHUNKED_H;
+		
+		private static const LOAD : Boolean = false;
 
-		private static const COMPUTES_PER_FRAME : uint = 1;
+		private static const COMPUTES_PER_FRAME : uint = 400;
 		
 		private static const ALIVE : uint = 0xFF000000;
 		private static const DEAD : uint = 0xFFFFFFFF;
 		
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
-			//addEventListener(Event.ENTER_FRAME, onEnterFrame);
+			addEventListener(Event.ENTER_FRAME, onEnterFrame);
 		}
 		
 		private var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
@@ -163,10 +162,17 @@ package {
 			cm.adjustSaturation(-100);
 			invertFilter = new ColorMatrixFilter(cm.matrix);
 			*/
-			
-			var j : JSONDecoderAsync = new JSONDecoderAsync(JSON.encode([1, 2, 3]), true);
+			/*
+			var j : JSONDecoderAsync = new JSONDecoderAsync(JSON.encode([{key: "val", key2: 2, o: {}, a: [], o2: {k: "y"}, arr: [1, 2, "3", 4]}, 5, [5, 4, 3], 6]), true);
+			i = 0;
+			while (!j.done) {
+				trace("loop " + i);
+				j.loop();
+				++i;
+			}
 			var v : * = j.getValue();
-			trace(v);
+			trace(JSON.encode(v));
+			*/
 		}
 		
 		private function traceMask(maskName : String) : void {
@@ -252,10 +258,15 @@ package {
 			//}
 		}
 		
-		private var d : JSONDecoderAsync;
+		private var d : JSONDecoderAsync = null;
+		private var dataObj : Object = null;
+		//private var dataObj : Object = LifeData.data3x3;
+		
+		//private var dataObj : Object = null;
 		private function onLoadComplete(e : Event) : void {
+			trace("file loaded");
 			d = new JSONDecoderAsync(e.target.data, true);
-			
+			/*
 			var o : Object = JSON.decode(e.target.data);
 			for (var i : uint = 0; i < cache.length; ++i) {
 				cache[i] = o.cache[i];
@@ -269,57 +280,99 @@ package {
 				}
 				states[i] = c;
 			}
+			*/
 		}
 		
 		private var l : URLLoader = null;
+		private var cacheLoadIdx : uint = 0;
+		private var stateLoadIdx : uint = 0;
+		private var loaded : Boolean = false;
 		private function onEnterFrame(e : Event) : void {
-			/** /
-			if (cacheIdx < mn) {
-				var i : uint = 0;
-				while (i < COMPUTES_PER_FRAME && cacheIdx < mn) {
-					fillCache();
-					++i;
-				}
-				//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
-				bd.setVector(cacheRect, c);
-				//draw(c, cacheRect, cacheMat, 10, 10);
-				draw(n, cacheRect2, cacheMat);
-				/*
-				for each (maskName in maskNames) {
-					trace("16 " + maskName);
-					_traceMask(states[16][maskName]);
-				}
-				/**/
-				/** /
-				if (cacheIdx == mn) {
-					data = 
-						"{\n" +
-						'    "width": ' + CACHE_WIDTH + ",\n" +
-						'    "height": ' + CACHE_HEIGHT + ",\n" +
-						'    "cache": [' + cache + "],\n" +
-						'    "states": [' + states + "]\n" +
-						'}';
-					trace(data);
-				}
-				/**/
-			/**/
-			if (states[0] == null) {
+			if (LOAD && !loaded) {
 				if (l == null) {
+					trace("loading file");
 					var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
 					l = new URLLoader(u);
 					l.addEventListener(Event.COMPLETE, onLoadComplete);
 					l.addEventListener(IOErrorEvent.IO_ERROR, function(e : Event) : void {
 						trace(e);
 					});
+				} else if (d != null) {
+					if (dataObj == null && !d.done) {
+						trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
+						for (i = 0; i < 10000; ++i) {
+							if (d.loop()) {
+								dataObj = d.getValue();
+								break;
+							}
+						}
+					} else if (cacheLoadIdx < cache.length) {
+						trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
+						for (i = 0; i < 5000 && cacheLoadIdx < cache.length; ++i) {
+							cache[cacheLoadIdx] = dataObj.cache[cacheLoadIdx];
+							++cacheLoadIdx;
+						}
+					} else if (stateLoadIdx < states.length) {
+						trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
+						for (i = 0; i < 1000 && stateLoadIdx < states.length; ++i) {
+							var ch : Chunk;
+							if (dataObj.states[stateLoadIdx] == null) {
+								ch = null;
+							} else {
+								ch = new Chunk(dataObj.states[stateLoadIdx]);
+							}
+							states[stateLoadIdx] = ch;
+							++stateLoadIdx;
+						}
+						loaded = stateLoadIdx == states.length;
+					}
 				}
-			/**/
+			} else if (!LOAD && cacheIdx < mn) {
+					var i : uint = 0;
+					while (i < COMPUTES_PER_FRAME && cacheIdx < mn) {
+						fillCache();
+						++i;
+					}
+					//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
+					bd.setVector(cacheRect, c);
+					//draw(c, cacheRect, cacheMat, 10, 10);
+					draw(n, cacheRect2, cacheMat);
+					/*
+					for each (maskName in maskNames) {
+					trace("16 " + maskName);
+					_traceMask(states[16][maskName]);
+					}
+					/**/
+					/**/
+					if (cacheIdx == mn) {
+						data = 
+							"{\n" +
+							'    "width": ' + CACHE_WIDTH + ",\n" +
+							'    "height": ' + CACHE_HEIGHT + ",\n" +
+							'    "cache": [' + cache + "],\n" +
+							'    "states": [' + states + "]\n" +
+							'}';
+						trace(data);
+					}
+					/**/
 			} else if (bbv[0] == null) {
+				d = null;
+				trace("initing chunks");
 				bbv[0] = new Vector.<uint>(F_CHUNKED_LEN);
 				bbv[1] = new Vector.<uint>(F_CHUNKED_LEN);
-				for (var y : uint = CHUNKED_H / 4 + 1; y < CHUNKED_H * 3 / 4 + 1; ++y) {
-					var yo : uint = F_CHUNKED_W * y;
-					for (var x : uint = CHUNKED_W / 4 + 1; x < CHUNKED_W * 3 / 4 + 1; ++x) {
-						bbv[0][x + yo] = masks.inner;
+				if (false) {
+					for (var y : uint = 1; y < CHUNKED_H - 1; ++y) {
+						var yo : uint = F_CHUNKED_W * y;
+						for (var x : uint = 1; x < CHUNKED_W - 1; ++x) {
+							bbv[0][x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+						}
+					}
+				} else {
+					for (var y : uint = CHUNKED_H / 4 + 1; y < CHUNKED_H * 3 / 4 + 1; ++y) {
+						var yo : uint = F_CHUNKED_W * y;
+						for (var x : uint = CHUNKED_W / 4 + 1; x < CHUNKED_W * 3 / 4 + 1; ++x) {
+							bbv[0][x + yo] = masks.inner;
+						}
 					}
 				}
 				/*
@@ -481,7 +534,7 @@ package {
 				graphics.drawRect(0, 0, W, H);
 				graphics.endFill();
 			}
-			drawFPS();
+			//drawFPS();
 			/**/
 		}
 		

@@ -31,8 +31,6 @@
 */
 
 package com.reversefold.json {
-    import com.adobe.serialization.json.JSONToken;
-    import com.adobe.serialization.json.JSONTokenType;
 
     public class JSONDecoderAsync {
 
@@ -42,12 +40,11 @@ package com.reversefold.json {
          */
         private var strict : Boolean;
 
-        /** The value that will get parsed from the JSON string */
-        private var value : *;
-
         /** The tokenizer designated to read the JSON string */
-        private var tokenizer : JSONTokenizer;
+        public var tokenizer : JSONTokenizer;
 
+		private var valueDecoder : JSONValueDecoder;
+		
         /**
          * Constructs a new JSONDecoder to parse a JSON string
          * into a native object.
@@ -64,20 +61,31 @@ package com.reversefold.json {
             this.strict = strict;
             tokenizer = new JSONTokenizer(s, strict);
 
-            value = JSONValueDecoder.parseValue(tokenizer.getNextToken(), tokenizer);
-
-        /*
-        nextToken();
-        value = parseValue();
-
-        // Make sure the input stream is empty
-        if ( strict && nextToken() != null )
-        {
-            tokenizer.parseError( "Unexpected characters left in input stream" );
+			valueDecoder = JSONValueDecoder.parseValue(tokenizer.getNextToken(), tokenizer);
+	
+	        /*
+	        nextToken();
+	        value = parseValue();
+	
+	        // Make sure the input stream is empty
+	        if ( strict && nextToken() != null )
+	        {
+	            tokenizer.parseError( "Unexpected characters left in input stream" );
+	        }
+	        */
         }
-        */
-        }
 
+		public function loop() : Boolean {
+			if (!done) {
+				return valueDecoder.loop();
+			}
+			return done;
+		}
+		
+		public function get done() : Boolean {
+			return valueDecoder.done;
+		}
+		
         /**
          * Gets the internal object that was created by parsing
          * the JSON string passed to the constructor.
@@ -89,7 +97,10 @@ package com.reversefold.json {
          * @tiptext
          */
         public function getValue() : * {
-            return value;
+			if (!done) {
+				throw new Error("Not done");
+			}
+            return valueDecoder.value;
         }
     }
 }

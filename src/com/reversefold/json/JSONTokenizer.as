@@ -50,10 +50,10 @@ package com.reversefold.json {
         private var obj : Object;
 
         /** The JSON string to be parsed */
-        private var jsonString : String;
+        public var jsonString : String;
 
         /** The current parsing location in the JSON string */
-        private var loc : int;
+        public var loc : int;
 
         /** The current character in the JSON string during parsing */
         private var ch : String;
