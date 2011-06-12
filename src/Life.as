@@ -26,12 +26,12 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="501", height="504")]
+	[SWF(frameRate="100", width="504", height="504")]
 	public class Life extends Sprite {
-		private static const W : uint = 501;
-		private static const H : uint = 504;
+		private static const W : uint = 500;
+		private static const H : uint = 500;
 		
-		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_WIDTH : uint = 2;
 		private static const CACHE_HEIGHT : uint = 2;
 
 		private static const CHUNKED_W : uint = W / CACHE_WIDTH;
@@ -41,7 +41,10 @@ package {
 		private static const F_CHUNKED_H : uint = CHUNKED_H + 2;
 		
 		private static const F_CHUNKED_LEN : uint = F_CHUNKED_W * F_CHUNKED_H;
-		
+
+		private static const F_CHUNKED_W_R : uint = F_CHUNKED_W - 1;
+		private static const F_CHUNKED_LIVE_LEN : uint = F_CHUNKED_LEN - F_CHUNKED_W;
+
 		private static const LOAD : Boolean = true;
 
 		private static const COMPUTES_PER_FRAME : uint = 400;
@@ -74,6 +77,9 @@ package {
 		private var cacheIdx : uint = 0;
 		private var c : Vector.<uint> = new Vector.<uint>(len, true);
 		private var n : Vector.<uint> = new Vector.<uint>(len, true);
+		private var cc : Vector.<Boolean> = new Vector.<Boolean>(F_CHUNKED_LEN, true);
+		private var nc : Vector.<Boolean> = new Vector.<Boolean>(F_CHUNKED_LEN, true);
+		private var tc : Vector.<Boolean>;
 		private var cacheRect : Rectangle = new Rectangle(1, 1, fw, fh);
 		private var cacheRect2 : Rectangle = new Rectangle(fw + 4, 1, fw, fh);
 		private var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
@@ -87,12 +93,17 @@ package {
 		private var data : String = null;
 		private var f : FileReference;
 		
+		private var reset : Boolean = true;
+		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 
 			stage.addEventListener(KeyboardEvent.KEY_UP, function(e : KeyboardEvent) : void {
 				trace("Pressed " + e.charCode);
+				if (e.charCode == 'r'.charCodeAt()) {
+					reset = true;
+				}
 				if (data == null || (e.charCode != 's'.charCodeAt() && e.charCode != 'S'.charCodeAt())) {
 					return;
 				}
@@ -289,6 +300,8 @@ package {
 		private var fileProgress : uint = 0;
 		private var fileSize : uint = 1;
 		
+		private var b : Bitmap = null;
+		
 		private function onIoError(e : Event) : void {
 			trace(e);
 		}
@@ -379,7 +392,8 @@ package {
 				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 				graphics.endFill();
 				/**/
-			} else if (bbv[0] == null) {
+			} else if (reset) {
+				reset = false;
 				graphics.clear();
 				d = null;
 				trace("initing chunks");
@@ -400,6 +414,14 @@ package {
 						}
 					}
 				}
+				cc = new Vector.<Boolean>(F_CHUNKED_LEN, true);
+				for (i = F_CHUNKED_W + 1; i < F_CHUNKED_LIVE_LEN; ++i) {
+					if ((i % F_CHUNKED_W) == F_CHUNKED_W_R) {
+						++i;
+						continue;
+					}
+					cc[i] = true;
+				}
 				/*
 				for (y = 0; y < F_CHUNKED_H; ++y) {
 					var s : String = "";
@@ -410,8 +432,10 @@ package {
 					trace(s);
 				}
 				*/
-				var b : Bitmap = new Bitmap(bd);
-				addChild(b);
+				if (b == null) {
+					b = new Bitmap(bd);
+					addChild(b);
+				}
 				drawChunked();
 				/** /
 				bd.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
@@ -436,20 +460,32 @@ package {
 		private var m : uint;
 		private var upIdx : uint;
 		private var downIdx : uint;
-		private static var F_CHUNKED_W_R : uint = F_CHUNKED_W - 1;
-		private static var F_CHUNKED_LIVE_LEN : uint = F_CHUNKED_LEN - F_CHUNKED_W;
+		private var cst : Chunk;
+		private var nst : Chunk;
 		private function drawChunked() : void {
+			/*
 			r.x = 0;
 			r.y = 0;
+			*/
 			c = bbv[ci];
 			n = bbv[nci];
 			bd.lock();
+			nc = new Vector.<Boolean>(F_CHUNKED_LEN, true);
 			for (i = F_CHUNKED_W + 1; i < F_CHUNKED_LIVE_LEN; ++i) {
-				if ((i % F_CHUNKED_W) == F_CHUNKED_W_R) {
-					//skips m == 0
+				if (
+					//checks for the last index in a row, which is always dead
+					(i % F_CHUNKED_W) == F_CHUNKED_W_R
+				) {
+					//skips the first index in a row as well, which is also always deadf
 					++i;
 					continue;
 				}
+				if (!cc[i]) {
+					continue;
+				}
+
+				r.x = i % F_CHUNKED_W * CACHE_WIDTH;
+				r.y = int(int(i) / int(F_CHUNKED_W)) * CACHE_HEIGHT;
 				bd.setVector(r, states[c[i]].vector);
 				upIdx = i - F_CHUNKED_W;
 				downIdx = i + F_CHUNKED_W;
@@ -465,11 +501,42 @@ package {
 					+ states[c[downIdx - 1]].topRight
 					+ states[c[downIdx + 1]].topLeft
 				];
+				if (c[i] ^ n[i]) {
+					cst = states[c[i]];
+					nst = states[n[i]];
+					nc[i] = true;
+					if (cst.bottom ^ nst.bottom) {
+						nc[downIdx] = true;
+					}
+					if (cst.top ^ nst.top) {
+						nc[upIdx] = true;
+					}
+					if (cst.left ^ nst.left) {
+						nc[i - 1] = true;
+					}
+					if (cst.right ^ nst.right) {
+						nc[i + 1] = true;
+					}
+					if (cst.bottomLeft ^ nst.bottomLeft) {
+						nc[downIdx - 1] = true;
+					}
+					if (cst.bottomRight ^ nst.bottomRight) {
+						nc[downIdx + 1] = true;
+					}
+					if (cst.topLeft ^ nst.topLeft) {
+						nc[upIdx - 1] = true;
+					}
+					if (cst.topRight ^ nst.topRight) {
+						nc[upIdx + 1] = true;
+					}
+				}
+				/*
 				r.x += CACHE_WIDTH;
 				r.x %= W;
 				if (r.x == 0) {
 					r.y += CACHE_HEIGHT;
 				}
+				*/
 			}
 			bd.unlock();
 			/** /
@@ -481,6 +548,10 @@ package {
 			i = ci;
 			ci = nci;
 			nci = i;
+			
+			tc = cc;
+			cc = nc;
+			nc = tc;
 		}
 		
 		private function nextFrame() : void {
