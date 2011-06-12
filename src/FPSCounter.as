@@ -16,8 +16,7 @@ package {
 		public static function reset() : void {
 			last = getTimer();
 			ticks = 0;
-			text = "--.- FPS";
-			text = text + "\n" + text + "\n"+ text;
+			text = "--.- FPS\n--.- min\n--.- max";
 			min = Number.MAX_VALUE;
 			max = Number.MIN_VALUE;
 		}
@@ -31,8 +30,8 @@ package {
 				min = Math.min(min, fps);
 				max = Math.max(max, fps);
                 text = fps.toFixed(1) + " FPS\n"
-					+ min.toFixed(1) + " FPS\n"
-					+ max.toFixed(1) + " FPS";
+					+ min.toFixed(1) + " min\n"
+					+ max.toFixed(1) + " max";
                 ticks = 0;
                 last = now;
             }
