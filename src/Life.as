@@ -26,10 +26,10 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="1002", height="1000")]
+	[SWF(frameRate="100", width="504", height="500")]
 	public class Life extends Sprite {
-		private static const W : uint = 1002;
-		private static const H : uint = 1000;
+		private static const W : uint = 504;
+		private static const H : uint = 500;
 		
 		private static const CACHE_WIDTH : uint = 3;
 		private static const CACHE_HEIGHT : uint = 2;
@@ -59,9 +59,10 @@ package {
 		
 		private var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
 		private var bbv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private var bd : BitmapData = new BitmapData(W + 2, H + 2);
-		private var fpsbd : BitmapData = new BitmapData(100, 50);
-		private var bd2 : BitmapData = new BitmapData(W + 2, H + 2);
+		private var bd : BitmapData = new BitmapData(W + 2, H + 2, true);
+		private var fpsbd : BitmapData = new BitmapData(100, 50, true);
+		private var fpsb : Bitmap = new Bitmap(fpsbd);
+		private var bd2 : BitmapData = new BitmapData(W + 2, H + 2, true);
 		private var ci : uint = 0;
 		private var nci : uint = 1;
 		
@@ -181,6 +182,8 @@ package {
 			var v : * = j.getValue();
 			trace(JSON.encode(v));
 			*/
+			fpsb.x = W - fpsb.width;
+			addChild(fpsb);
 		}
 		
 		private function traceMask(maskName : String) : void {
@@ -356,10 +359,11 @@ package {
 				drawProgressBar(d != null ? d.tokenizer.loc : 0, d != null ? d.tokenizer.jsonString.length : 1, PROGRESS_Y + 22);
 				drawProgressBar(cacheLoadIdx, cache.length, PROGRESS_Y + 44);
 				drawProgressBar(stateLoadIdx, states.length, PROGRESS_Y + 66);
-
+				/*
 				graphics.beginBitmapFill(fpsbd);
 				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 				graphics.endFill();
+				*/
 			} else if (!LOAD && cacheIdx < mn) {
 				bd2.fillRect(bd2.rect, 0x0);
 				var i : uint = 0;
@@ -388,9 +392,11 @@ package {
 						'}';
 					trace(data);
 				}
+				/*
 				graphics.beginBitmapFill(fpsbd);
 				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 				graphics.endFill();
+				*/
 				/**/
 			} else if (reset) {
 				reset = false;
@@ -434,7 +440,13 @@ package {
 				*/
 				if (b == null) {
 					b = new Bitmap(bd);
+					b.x = -1;
+					b.y = -1;
 					addChild(b);
+					if (fpsb.parent != null) {
+						fpsb.parent.removeChild(fpsb);
+					}
+					addChild(fpsb);
 				}
 				drawChunked();
 				/** /
@@ -625,7 +637,7 @@ package {
 			bd.setVector(rect, vec);
 			graphics.clear();
 			graphics.beginBitmapFill(bd, mat);
-			graphics.drawRect(0, 0, W, H);
+			graphics.drawRect(-1, -1, W, H);
 			graphics.endFill();
 			/**/
 			if (cacheIdx < mn) {
@@ -637,7 +649,7 @@ package {
 				DText.draw(bd2, String(full), 40 + 10 * fw * 3 / 2, 15 + 10 * fh, DText.CENTER);
 				DText.draw(bd2, String(inner), 40 + 10 * fw * 3 / 2, 35 + 10 * fh, DText.CENTER);
 				graphics.beginBitmapFill(bd2);
-				graphics.drawRect(0, 0, W, H);
+				graphics.drawRect(-1, -1, W, H);
 				graphics.endFill();
 			}
 			//drawFPS();
@@ -661,9 +673,11 @@ package {
 		
 		private var fpsp : Point = new Point(W - fpsbd.width, 0);
 		private function drawFPS() : void {
-			fpsbd.fillRect(fpsbd.rect, 0x0);
+			fpsbd.lock();
+			fpsbd.fillRect(fpsbd.rect, 0x00000000);
 			DText.draw(fpsbd, FPSCounter.update(), fpsbd.width - 1, 0, DText.RIGHT);
-			bd.copyPixels(fpsbd, fpsbd.rect, fpsp);
+			fpsbd.unlock();
+			//bd.copyPixels(fpsbd, fpsbd.rect, fpsp, null, null, true);
 			/** /
 			graphics.beginBitmapFill(fpsbd);
 			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
