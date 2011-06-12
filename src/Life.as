@@ -25,12 +25,12 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="504", height="504")]
+	[SWF(frameRate="100", width="501", height="504")]
 	public class Life extends Sprite {
-		private static const W : uint = 502;
+		private static const W : uint = 501;
 		private static const H : uint = 504;
 		
-		private static const CACHE_WIDTH : uint = 2;
+		private static const CACHE_WIDTH : uint = 3;
 		private static const CACHE_HEIGHT : uint = 2;
 
 		private static const CHUNKED_W : uint = W / CACHE_WIDTH;
@@ -297,7 +297,7 @@ package {
 				} else if (d != null) {
 					if (dataObj == null && !d.done) {
 						//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
-						for (i = 0; i < 3000; ++i) {
+						for (i = 0; i < 150000; ++i) {
 							if (d.loop()) {
 								dataObj = d.getValue();
 								break;
@@ -305,13 +305,13 @@ package {
 						}
 					} else if (cacheLoadIdx < cache.length) {
 						//trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
-						for (i = 0; i < 3000 && cacheLoadIdx < cache.length; ++i) {
+						for (i = 0; i < 60000 && cacheLoadIdx < cache.length; ++i) {
 							cache[cacheLoadIdx] = dataObj.cache[cacheLoadIdx];
 							++cacheLoadIdx;
 						}
 					} else if (stateLoadIdx < states.length) {
 						//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
-						for (i = 0; i < 3000 && stateLoadIdx < states.length; ++i) {
+						for (i = 0; i < 60000 && stateLoadIdx < states.length; ++i) {
 							var ch : Chunk;
 							if (dataObj.states[stateLoadIdx] == null) {
 								ch = null;
@@ -323,9 +323,9 @@ package {
 						}
 						loaded = stateLoadIdx == states.length;
 					}
-					drawProgressBar(d.tokenizer.loc, d.tokenizer.jsonString.length, int(H * 3 / 4));
-					drawProgressBar(cacheLoadIdx, cache.length, int(H * 3 / 4) + 22);
-					drawProgressBar(stateLoadIdx, states.length, int(H * 3 / 4) + 44);
+					drawProgressBar(d.tokenizer.loc, d.tokenizer.jsonString.length, 300);
+					drawProgressBar(cacheLoadIdx, cache.length, 300 + 22);
+					drawProgressBar(stateLoadIdx, states.length, 300 + 44);
 				}
 				graphics.beginBitmapFill(fpsbd);
 				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
@@ -559,7 +559,7 @@ package {
 			graphics.drawRect(int(W / 4), y, int(W / 2), 20);
 			graphics.lineStyle();
 			graphics.beginFill(0x0);
-			graphics.drawRect(int(W / 4 + 2), y + 2, int(W / 2 - 2) * cur / tot, 17);
+			graphics.drawRect(int(W / 4 + 2), y + 2, int(W / 2 - 4) * cur / tot, 17);
 			graphics.endFill();
 			
 			DText.draw(bd2, Number(cur * 100 / tot).toFixed(1) + "%", int(W / 2), y + 2, DText.CENTER);
