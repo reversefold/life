@@ -11,6 +11,7 @@ package {
 	import flash.events.IOErrorEvent;
 	import flash.events.KeyboardEvent;
 	import flash.events.MouseEvent;
+	import flash.events.ProgressEvent;
 	import flash.filters.BitmapFilter;
 	import flash.filters.ColorMatrixFilter;
 	import flash.geom.Matrix;
@@ -277,12 +278,26 @@ package {
 				states[i] = c;
 			}
 			*/
+			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
 		}
 		
 		private var l : URLLoader = null;
 		private var cacheLoadIdx : uint = 0;
 		private var stateLoadIdx : uint = 0;
 		private var loaded : Boolean = false;
+		private static var PROGRESS_Y : uint = 300;
+		private var fileProgress : uint = 0;
+		private var fileSize : uint = 1;
+		
+		private function onIoError(e : Event) : void {
+			trace(e);
+		}
+		
+		private function onProgress(e : ProgressEvent) : void {
+			fileProgress = e.bytesLoaded;
+			fileSize = e.bytesTotal;
+		}
+		
 		private function onEnterFrame(e : Event) : void {
 			if (LOAD && !loaded) {
 				bd2.fillRect(bd2.rect, 0x0);
@@ -291,9 +306,8 @@ package {
 					var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
 					l = new URLLoader(u);
 					l.addEventListener(Event.COMPLETE, onLoadComplete);
-					l.addEventListener(IOErrorEvent.IO_ERROR, function(e : Event) : void {
-						trace(e);
-					});
+					l.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
+					l.addEventListener(ProgressEvent.PROGRESS, onProgress);
 				} else if (d != null) {
 					if (dataObj == null && !d.done) {
 						//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
@@ -323,10 +337,13 @@ package {
 						}
 						loaded = stateLoadIdx == states.length;
 					}
-					drawProgressBar(d.tokenizer.loc, d.tokenizer.jsonString.length, 300);
-					drawProgressBar(cacheLoadIdx, cache.length, 300 + 22);
-					drawProgressBar(stateLoadIdx, states.length, 300 + 44);
 				}
+
+				drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
+				drawProgressBar(d != null ? d.tokenizer.loc : 0, d != null ? d.tokenizer.jsonString.length : 1, PROGRESS_Y + 22);
+				drawProgressBar(cacheLoadIdx, cache.length, PROGRESS_Y + 44);
+				drawProgressBar(stateLoadIdx, states.length, PROGRESS_Y + 66);
+
 				graphics.beginBitmapFill(fpsbd);
 				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 				graphics.endFill();
@@ -363,6 +380,7 @@ package {
 				graphics.endFill();
 				/**/
 			} else if (bbv[0] == null) {
+				graphics.clear();
 				d = null;
 				trace("initing chunks");
 				bbv[0] = new Vector.<uint>(F_CHUNKED_LEN);
