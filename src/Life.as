@@ -26,12 +26,12 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="504", height="504")]
+	[SWF(frameRate="100", width="1002", height="1000")]
 	public class Life extends Sprite {
-		private static const W : uint = 500;
-		private static const H : uint = 500;
+		private static const W : uint = 1002;
+		private static const H : uint = 1000;
 		
-		private static const CACHE_WIDTH : uint = 2;
+		private static const CACHE_WIDTH : uint = 3;
 		private static const CACHE_HEIGHT : uint = 2;
 
 		private static const CHUNKED_W : uint = W / CACHE_WIDTH;
@@ -60,7 +60,7 @@ package {
 		private var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
 		private var bbv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
 		private var bd : BitmapData = new BitmapData(W + 2, H + 2);
-		private var fpsbd : BitmapData = new BitmapData(100, 30);
+		private var fpsbd : BitmapData = new BitmapData(100, 50);
 		private var bd2 : BitmapData = new BitmapData(W + 2, H + 2);
 		private var ci : uint = 0;
 		private var nci : uint = 1;
@@ -443,6 +443,7 @@ package {
 				bv[1] = new Vector.<uint>(W * H, true);
 				draw(bv[ci], bd.rect);
 				/**/
+				FPSCounter.reset();
 			} else {
 				//nextChunkedFrame();
 				drawChunked();
