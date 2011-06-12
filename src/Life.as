@@ -27,7 +27,7 @@ package {
 	
 	[SWF(frameRate="100", width="504", height="504")]
 	public class Life extends Sprite {
-		private static const W : uint = 504;
+		private static const W : uint = 502;
 		private static const H : uint = 504;
 		
 		private static const CACHE_WIDTH : uint = 2;
@@ -41,7 +41,7 @@ package {
 		
 		private static const F_CHUNKED_LEN : uint = F_CHUNKED_W * F_CHUNKED_H;
 		
-		private static const LOAD : Boolean = false;
+		private static const LOAD : Boolean = true;
 
 		private static const COMPUTES_PER_FRAME : uint = 400;
 		
@@ -55,9 +55,9 @@ package {
 		
 		private var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
 		private var bbv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private var bd : BitmapData;
-		private var fpsbd : BitmapData;
-		private var bd2 : BitmapData;
+		private var bd : BitmapData = new BitmapData(W + 2, H + 2);
+		private var fpsbd : BitmapData = new BitmapData(100, 30);
+		private var bd2 : BitmapData = new BitmapData(W + 2, H + 2);
 		private var ci : uint = 0;
 		private var nci : uint = 1;
 		
@@ -99,10 +99,6 @@ package {
 				f = new FileReference();
 				f.save(data, fn);
 			});
-			
-			bd = new BitmapData(W + 2, H + 2);
-			bd2 = new BitmapData(W + 2, H + 2);
-			fpsbd = new BitmapData(100, 30);
 			
 			for each (maskName in describeType(masks).variable.@name) {
 				if (maskName == "vector") {
@@ -289,6 +285,7 @@ package {
 		private var loaded : Boolean = false;
 		private function onEnterFrame(e : Event) : void {
 			if (LOAD && !loaded) {
+				bd2.fillRect(bd2.rect, 0x0);
 				if (l == null) {
 					trace("loading file");
 					var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
@@ -326,35 +323,45 @@ package {
 						}
 						loaded = stateLoadIdx == states.length;
 					}
+					drawProgressBar(d.tokenizer.loc, d.tokenizer.jsonString.length, int(H * 3 / 4));
+					drawProgressBar(cacheLoadIdx, cache.length, int(H * 3 / 4) + 22);
+					drawProgressBar(stateLoadIdx, states.length, int(H * 3 / 4) + 44);
 				}
+				graphics.beginBitmapFill(fpsbd);
+				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
+				graphics.endFill();
 			} else if (!LOAD && cacheIdx < mn) {
-					var i : uint = 0;
-					while (i < COMPUTES_PER_FRAME && cacheIdx < mn) {
-						fillCache();
-						++i;
-					}
-					//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
-					bd.setVector(cacheRect, c);
-					//draw(c, cacheRect, cacheMat, 10, 10);
-					draw(n, cacheRect2, cacheMat);
-					/*
-					for each (maskName in maskNames) {
-					trace("16 " + maskName);
-					_traceMask(states[16][maskName]);
-					}
-					/**/
-					/**/
-					if (cacheIdx == mn) {
-						data = 
-							"{\n" +
-							'    "width": ' + CACHE_WIDTH + ",\n" +
-							'    "height": ' + CACHE_HEIGHT + ",\n" +
-							'    "cache": [' + cache + "],\n" +
-							'    "states": [' + states + "]\n" +
-							'}';
-						trace(data);
-					}
-					/**/
+				bd2.fillRect(bd2.rect, 0x0);
+				var i : uint = 0;
+				while (i < COMPUTES_PER_FRAME && cacheIdx < mn) {
+					fillCache();
+					++i;
+				}
+				//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
+				bd.setVector(cacheRect, c);
+				//draw(c, cacheRect, cacheMat, 10, 10);
+				draw(n, cacheRect2, cacheMat);
+				/*
+				for each (maskName in maskNames) {
+				trace("16 " + maskName);
+				_traceMask(states[16][maskName]);
+				}
+				/**/
+				/**/
+				if (cacheIdx == mn) {
+					data = 
+						"{\n" +
+						'    "width": ' + CACHE_WIDTH + ",\n" +
+						'    "height": ' + CACHE_HEIGHT + ",\n" +
+						'    "cache": [' + cache + "],\n" +
+						'    "states": [' + states + "]\n" +
+						'}';
+					trace(data);
+				}
+				graphics.beginBitmapFill(fpsbd);
+				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
+				graphics.endFill();
+				/**/
 			} else if (bbv[0] == null) {
 				d = null;
 				trace("initing chunks");
@@ -385,6 +392,8 @@ package {
 					trace(s);
 				}
 				*/
+				var b : Bitmap = new Bitmap(bd);
+				addChild(b);
 				drawChunked();
 				/** /
 				bd.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
@@ -414,6 +423,7 @@ package {
 			r.y = 0;
 			c = bbv[ci];
 			n = bbv[nci];
+			bd.lock();
 			for (i = F_CHUNKED_W + 1; i < F_CHUNKED_LIVE_LEN; ++i) {
 				if ((i % F_CHUNKED_W) == F_CHUNKED_W_R) {
 					//skips m == 0
@@ -439,7 +449,8 @@ package {
 					r.y += CACHE_HEIGHT;
 				}
 			}
-			/**/
+			bd.unlock();
+			/** /
 			graphics.clear();
 			graphics.beginBitmapFill(bd);
 			graphics.drawRect(0, 0, W, H);
@@ -524,7 +535,8 @@ package {
 			graphics.endFill();
 			/**/
 			if (cacheIdx < mn) {
-				bd2.fillRect(bd2.rect, 0x0);
+				drawProgressBar(cacheIdx, mn, int(H * 3 / 4));
+				
 				DText.draw(bd2, String(cacheIdx - 1), 10 + 10 * fw / 2, 15 + 10 * fh, DText.CENTER);
 				DText.draw(bd2, String((cacheIdx - 1) & masks.inner), 10 + 10 * fw / 2, 35 + 10 * fh, DText.CENTER);
 
@@ -538,12 +550,31 @@ package {
 			/**/
 		}
 		
+		private function drawProgressBar(cur : uint, tot : uint, y : uint) : void {
+			graphics.lineStyle(1, 0);
+			graphics.drawRect(int(W / 4), y, int(W / 2), 20);
+			graphics.lineStyle();
+			graphics.beginFill(0x101060);
+			graphics.drawRect(int(W / 4 + 2), y + 2, int(W / 2 - 2) * cur / tot, 17);
+			graphics.endFill();
+			
+			DText.draw(bd2, Number(cur * 100 / tot).toFixed(1) + "%", int(W / 2), y + 2, DText.CENTER);
+			
+			graphics.beginBitmapFill(bd2);
+			graphics.drawRect(0, 0, W, H);
+			graphics.endFill();
+		}
+		
+		private var fpsp : Point = new Point(W - fpsbd.width, 0);
 		private function drawFPS() : void {
 			fpsbd.fillRect(fpsbd.rect, 0x0);
 			DText.draw(fpsbd, FPSCounter.update(), fpsbd.width - 1, 0, DText.RIGHT);
+			bd.copyPixels(fpsbd, fpsbd.rect, fpsp);
+			/** /
 			graphics.beginBitmapFill(fpsbd);
 			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 			graphics.endFill();
+			/**/
 		}
 	}
 }
