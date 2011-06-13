@@ -27,10 +27,20 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="1000", height="600")]
+	[SWF(frameRate="100", width="1000", height="1000")]
 	public class Life extends Sprite {
-		private static const CACHE_WIDTH : uint = 3;
-		private static const CACHE_HEIGHT : uint = 3;
+		private static const CACHE_WIDTH : uint = 2;
+		private static const CACHE_HEIGHT : uint = 2;
+		
+		private static const REQUESTED_WIDTH : uint = 1000;
+		private static const REQUESTED_HEIGHT : uint = 1000;
+		
+		private static const LOAD : Boolean = false;
+		
+		private static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
+		
+		private static const ALIVE_PIXEL : uint = 0xFF000000;
+		private static const DEAD_PIXEL : uint = 0xFFFFFFFF;
 		
 		private static const FULL_CACHE_WIDTH : uint = CACHE_WIDTH + 2;
 		private static const FULL_CACHE_HEIGHT : uint = CACHE_HEIGHT + 2;
@@ -38,9 +48,6 @@ package {
 		private static const CACHE_VECTOR_LENGTH : uint = FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT;
 		private static const INNER_CACHE_VECTOR_LENGTH : uint = CACHE_WIDTH * CACHE_HEIGHT;
 		private static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
-
-		private static const REQUESTED_WIDTH : uint = 1000;
-		private static const REQUESTED_HEIGHT : uint = 600;
 		
 		private static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
 		private static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
@@ -56,13 +63,6 @@ package {
 		
 		private static const FULL_DISPLAY_WIDTH : uint = DISPLAY_WIDTH + CACHE_WIDTH * 2;
 		private static const FULL_DISPLAY_HEIGHT : uint = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
-
-		private static const LOAD : Boolean = true;
-
-		private static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
-		
-		private static const ALIVE_PIXEL : uint = 0xFF000000;
-		private static const DEAD_PIXEL : uint = 0xFFFFFFFF;
 
 		private static const PROGRESS_Y : uint = 300;
 		
@@ -83,6 +83,11 @@ package {
 		private static var currentChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 		private static var nextChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 		private static var tempChunksToCheck : Vector.<Boolean>;
+		
+		private static const preBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		private static const preBitmap : Bitmap = new Bitmap(preBitmapData);
+		private static const postBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		private static const postBitmap : Bitmap = new Bitmap(postBitmapData);
 		
 		private static var cacheRect : Rectangle = new Rectangle(1, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
 		private static var cacheRect2 : Rectangle = new Rectangle(FULL_CACHE_WIDTH + 4, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
@@ -151,13 +156,27 @@ package {
 			if (e.charCode == 'p'.charCodeAt()) {
 				if (paused) {
 					addEventListener(Event.ENTER_FRAME, enterFrameListener);
+					addEventListener(Event.ENTER_FRAME, drawFPS);
 				} else {
 					removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+					removeEventListener(Event.ENTER_FRAME, drawFPS);
 				}
 				paused = !paused;
 				return;
 			}
-			if (dataString == null || (e.charCode != 's'.charCodeAt() && e.charCode != 'S'.charCodeAt())) {
+			/*
+			if (e.charCode == 'n'.charCodeAt()) {
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				addEventListener(Event.ENTER_FRAME, renderNaive);
+				enterFrameListener = renderNaive;
+			}
+			if (e.charCode == 'c'.charCodeAt()) {
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				addEventListener(Event.ENTER_FRAME, drawChunked);
+				enterFrameListener = drawChunked;
+			}
+			*/
+			if (dataString == null || (e.charCode != 's'.charCodeAt())) {
 				return;
 			}
 			var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
@@ -219,6 +238,11 @@ package {
 				traceMask(maskName);
 			}
 			*/
+
+			bitmap = new Bitmap(bitmapData);
+			bitmap.x = -CACHE_WIDTH;
+			bitmap.y = -CACHE_HEIGHT;
+			addChild(bitmap);
 
 			fpsBitmap.x = DISPLAY_WIDTH - fpsBitmap.width;
 			addChild(fpsBitmap);
@@ -317,7 +341,7 @@ package {
 		}
 		
 		private function loadListener(e : Event) : void {
-			bitmapData2.fillRect(bitmapData2.rect, 0x0);
+			//bitmapData2.fillRect(bitmapData2.rect, 0x0);
 			if (loader == null) {
 				trace("loading file");
 				var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
@@ -378,6 +402,11 @@ package {
 		}
 		
 		private function resetListener(e : Event) : void {
+			if (preBitmap.parent != null) {
+				preBitmap.parent.removeChild(preBitmap);
+				postBitmap.parent.removeChild(postBitmap);
+			}
+			bitmapData.fillRect(bitmapData.rect, 0);
 			graphics.clear();
 			jsonDecoder = null;
 			trace("initing chunks");
@@ -419,6 +448,7 @@ package {
 			trace(s);
 			}
 			*/
+			/*
 			if (bitmap == null) {
 				bitmap = new Bitmap(bitmapData);
 				bitmap.x = -CACHE_WIDTH;
@@ -429,6 +459,7 @@ package {
 				}
 				addChild(fpsBitmap);
 			}
+			*/
 			drawChunked();
 			/** /
 			 bd.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
@@ -449,17 +480,44 @@ package {
 		}
 		
 		private function generateListener(e : Event) : void {
-			bitmapData2.fillRect(bitmapData2.rect, 0x0);
+			if (preBitmap.parent == null) {
+				preBitmap.x = 10;
+				postBitmap.x = 40 + FULL_CACHE_WIDTH * 10;
+				preBitmap.y = postBitmap.y = 10;
+				preBitmap.scaleX = postBitmap.scaleX
+					= preBitmap.scaleY = postBitmap.scaleY = 10;
+				addChild(preBitmap);
+				addChild(postBitmap);
+			}
+			preBitmapData.fillRect(preBitmapData.rect, 0x0);
+			postBitmapData.fillRect(postBitmapData.rect, 0x0);
 			var i : uint = 0;
 			while (i < CACHE_COMPUTATIONS_PER_FRAME && cacheIdx < NUM_CACHE_PERMUTATIONS) {
 				fillCache();
 				++i;
 			}
+			preBitmapData.setVector(preBitmapData.rect, currentStates);
 			//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
-			bitmapData.setVector(cacheRect, currentStates);
+			//bitmapData.setVector(cacheRect, currentStates);
 			//draw(c, cacheRect, cacheMat, 10, 10);
-			draw(nextStates, cacheRect2, cacheMat);
+			postBitmapData.setVector(postBitmapData.rect, nextStates);
+			//draw(nextStates, cacheRect2, cacheMat);
 			
+			bitmapData.fillRect(bitmapData.rect, 0x0);
+			
+			drawProgressBar(cacheIdx, NUM_CACHE_PERMUTATIONS, PROGRESS_Y);
+			
+			DText.draw(bitmapData, String(cacheIdx - 1), 10 + 10 * FULL_CACHE_WIDTH / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String((cacheIdx - 1) & masks.inner), 10 + 10 * FULL_CACHE_WIDTH / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+			
+			DText.draw(bitmapData, String(full), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String(inner), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+			/*
+			graphics.beginBitmapFill(bitmapData);
+			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
+			graphics.endFill();
+			*/
+
 			if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
 				dataString = 
 					"{\n" +
@@ -478,6 +536,10 @@ package {
 					'}';
 				*/
 				//trace(dataString);
+				
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				addEventListener(Event.ENTER_FRAME, resetListener);
+				enterFrameListener = resetListener;
 			}
 			/*
 			graphics.beginBitmapFill(fpsbd);
@@ -631,7 +693,7 @@ package {
 			graphics.beginBitmapFill(bitmapData, mat);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
-
+			/*
 			if (cacheIdx < NUM_CACHE_PERMUTATIONS) {
 				drawProgressBar(cacheIdx, NUM_CACHE_PERMUTATIONS, int(DISPLAY_HEIGHT * 3 / 4));
 				
@@ -644,22 +706,24 @@ package {
 				graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 				graphics.endFill();
 			}
+			*/
 			//drawFPS();
 		}
 		
 		private function drawProgressBar(cur : uint, tot : uint, y : uint) : void {
-			graphics.lineStyle(1, 0);
+			graphics.lineStyle(1, ALIVE_PIXEL);
 			graphics.drawRect(int(DISPLAY_WIDTH / 4), y, int(DISPLAY_WIDTH / 2), 20);
 			graphics.lineStyle();
-			graphics.beginFill(0x0);
+			graphics.beginFill(ALIVE_PIXEL);
 			graphics.drawRect(int(DISPLAY_WIDTH / 4 + 2), y + 2, int(DISPLAY_WIDTH / 2 - 3) * cur / tot, 17);
 			graphics.endFill();
 			
-			DText.draw(bitmapData2, Number(cur * 100 / tot).toFixed(1) + "%", int(DISPLAY_WIDTH / 2), y + 2, DText.CENTER);
-			
+			DText.draw(bitmapData, Number(cur * 100 / tot).toFixed(1) + "%", int(DISPLAY_WIDTH / 2), y + 3, DText.CENTER);
+			/*
 			graphics.beginBitmapFill(bitmapData2);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
+			*/
 		}
 		
 		private function drawFPS(e : Event = null) : void {
