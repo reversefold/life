@@ -64,27 +64,24 @@ package {
 		private static const ALIVE_PIXEL : uint = 0xFF000000;
 		private static const DEAD_PIXEL : uint = 0xFFFFFFFF;
 		
-		private static var bitVector : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private static var chunkVector : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		
 		private static var bitmapData : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var bitmap : Bitmap = null;
 		private static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
 		private static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
 		
-		private static var currentVectorIdx : uint = 0;
-		private static var nextVectorIdx : uint = 1;
-		
 		private static var cache : Vector.<uint> = new Vector.<uint>(NUM_CACHE_PERMUTATIONS, true);
 		private static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 1), true);
 		
 		private static var cacheIdx : uint = 0;
-		private static var c : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
-		private static var n : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
-		private static var cc : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-		private static var nc : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-		private static var tc : Vector.<Boolean>;
+		private static var currentStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
+		private static var nextStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
+		private static var tmpStates : Vector.<uint>;
+		
+		private static var currentChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+		private static var nextChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+		private static var tempChunksToCheck : Vector.<Boolean>;
+		
 		private static var cacheRect : Rectangle = new Rectangle(1, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
 		private static var cacheRect2 : Rectangle = new Rectangle(FULL_CACHE_WIDTH + 4, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
 		private static var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
@@ -108,7 +105,6 @@ package {
 		private static var d : JSONDecoderAsync = null;
 		private static var dataObj : Object = null;
 		//private static var dataObj : Object = LifeData.data3x3;
-		
 		//private static var dataObj : Object = null;
 		
 		private static var l : URLLoader = null;
@@ -270,9 +266,9 @@ package {
 		
 		private function fillCache() : void {
 			//for (var i : uint = 0; i < mn; ++i) {
-				uintToVec(cacheIdx, c);
-				nextFromPrev(c, n, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-				full = vecToUint(n);
+				uintToVec(cacheIdx, currentStates);
+				nextFromPrev(currentStates, nextStates, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+				full = vecToUint(nextStates);
 				inner = full & masks.inner;
 				if (states[inner] == null) {
 					innerVector = new Vector.<uint>(INNER_CACHE_VECTOR_LENGTH, true);
@@ -392,9 +388,9 @@ package {
 					++i;
 				}
 				//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
-				bitmapData.setVector(cacheRect, c);
+				bitmapData.setVector(cacheRect, currentStates);
 				//draw(c, cacheRect, cacheMat, 10, 10);
-				draw(n, cacheRect2, cacheMat);
+				draw(nextStates, cacheRect2, cacheMat);
 				/*
 				for each (maskName in maskNames) {
 				trace("16 " + maskName);
@@ -423,30 +419,30 @@ package {
 				graphics.clear();
 				d = null;
 				trace("initing chunks");
-				chunkVector[0] = new Vector.<uint>(FULL_CHUNKED_LENGTH);
-				chunkVector[1] = new Vector.<uint>(FULL_CHUNKED_LENGTH);
+				currentStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
+				nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
 				if (false) {
 					for (var y : uint = 1; y < CHUNKED_HEIGHT - 1; ++y) {
 						var yo : uint = FULL_CHUNKED_WIDTH * y;
 						for (var x : uint = 1; x < CHUNKED_WIDTH - 1; ++x) {
-							chunkVector[0][x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+							currentStates[x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
 						}
 					}
 				} else {
 					for (var y : uint = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
 						var yo : uint = FULL_CHUNKED_WIDTH * y;
 						for (var x : uint = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
-							chunkVector[0][x + yo] = masks.inner;
+							currentStates[x + yo] = masks.inner;
 						}
 					}
 				}
-				cc = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+				currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 				for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
 					if ((i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1) {
 						++i;
 						continue;
 					}
-					cc[i] = true;
+					currentChunksToCheck[i] = true;
 				}
 				/*
 				for (y = 0; y < F_CHUNKED_H; ++y) {
@@ -493,10 +489,8 @@ package {
 			r.x = 0;
 			r.y = 0;
 			*/
-			c = chunkVector[currentVectorIdx];
-			n = chunkVector[nextVectorIdx];
 			bitmapData.lock();
-			nc = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+			nextChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 			for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
 				if (
 					//checks for the last index in a row, which is always dead
@@ -506,54 +500,54 @@ package {
 					++i;
 					continue;
 				}
-				if (!cc[i]) {
+				if (!currentChunksToCheck[i]) {
 					continue;
 				}
 
 				r.x = i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
 				r.y = int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
-				bitmapData.setVector(r, states[c[i]].vector);
+				bitmapData.setVector(r, states[currentStates[i]].vector);
 				upIdx = i - FULL_CHUNKED_WIDTH;
 				downIdx = i + FULL_CHUNKED_WIDTH;
-				n[i] = cache[
-					c[i]
-					+ states[c[upIdx]].bottom
-					+ states[c[downIdx]].top
-					+ states[c[i - 1]].right
-					+ states[c[i + 1]].left
+				nextStates[i] = cache[
+					currentStates[i]
+					+ states[currentStates[upIdx]].bottom
+					+ states[currentStates[downIdx]].top
+					+ states[currentStates[i - 1]].right
+					+ states[currentStates[i + 1]].left
 					
-					+ states[c[upIdx - 1]].bottomRight
-					+ states[c[upIdx + 1]].bottomLeft
-					+ states[c[downIdx - 1]].topRight
-					+ states[c[downIdx + 1]].topLeft
+					+ states[currentStates[upIdx - 1]].bottomRight
+					+ states[currentStates[upIdx + 1]].bottomLeft
+					+ states[currentStates[downIdx - 1]].topRight
+					+ states[currentStates[downIdx + 1]].topLeft
 				];
-				if (c[i] ^ n[i]) {
-					cst = states[c[i]];
-					nst = states[n[i]];
-					nc[i] = true;
+				if (currentStates[i] ^ nextStates[i]) {
+					cst = states[currentStates[i]];
+					nst = states[nextStates[i]];
+					nextChunksToCheck[i] = true;
 					if (cst.bottom ^ nst.bottom) {
-						nc[downIdx] = true;
+						nextChunksToCheck[downIdx] = true;
 					}
 					if (cst.top ^ nst.top) {
-						nc[upIdx] = true;
+						nextChunksToCheck[upIdx] = true;
 					}
 					if (cst.left ^ nst.left) {
-						nc[i - 1] = true;
+						nextChunksToCheck[i - 1] = true;
 					}
 					if (cst.right ^ nst.right) {
-						nc[i + 1] = true;
+						nextChunksToCheck[i + 1] = true;
 					}
 					if (cst.bottomLeft ^ nst.bottomLeft) {
-						nc[downIdx - 1] = true;
+						nextChunksToCheck[downIdx - 1] = true;
 					}
 					if (cst.bottomRight ^ nst.bottomRight) {
-						nc[downIdx + 1] = true;
+						nextChunksToCheck[downIdx + 1] = true;
 					}
 					if (cst.topLeft ^ nst.topLeft) {
-						nc[upIdx - 1] = true;
+						nextChunksToCheck[upIdx - 1] = true;
 					}
 					if (cst.topRight ^ nst.topRight) {
-						nc[upIdx + 1] = true;
+						nextChunksToCheck[upIdx + 1] = true;
 					}
 				}
 				/*
@@ -571,21 +565,20 @@ package {
 			graphics.drawRect(0, 0, W, H);
 			graphics.endFill();
 			/**/
-			i = currentVectorIdx;
-			currentVectorIdx = nextVectorIdx;
-			nextVectorIdx = i;
-			
-			tc = cc;
-			cc = nc;
-			nc = tc;
+			tmpStates = currentStates;
+			currentStates = nextStates;
+			nextStates = tmpStates;
+
+			tempChunksToCheck = currentChunksToCheck;
+			currentChunksToCheck = nextChunksToCheck;
+			nextChunksToCheck = tempChunksToCheck;
 		}
 		
 		private function nextFrame() : void {
-			var c : Vector.<uint> = bitVector[currentVectorIdx];
-			currentVectorIdx++;
-			currentVectorIdx %= bitVector.length;
-			var n : Vector.<uint> = bitVector[currentVectorIdx];
-			nextFromPrev(c, n, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+			tmpStates = currentStates;
+			currentStates = nextStates;
+			nextStates = tmpStates;
+			nextFromPrev(currentStates, nextStates, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 		}
 		
 		private function nextFromPrev(c : Vector.<uint>, n : Vector.<uint>, W : uint, H : uint) : void {
