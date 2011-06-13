@@ -31,6 +31,13 @@ package {
 	public class Life extends Sprite {
 		private static const CACHE_WIDTH : uint = 2;
 		private static const CACHE_HEIGHT : uint = 2;
+		
+		private static const FULL_CACHE_WIDTH : uint = CACHE_WIDTH + 2;
+		private static const FULL_CACHE_HEIGHT : uint = CACHE_HEIGHT + 2;
+		
+		private static const CACHE_VECTOR_LENGTH : uint = FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT;
+		private static const INNER_CACHE_VECTOR_LENGTH : uint = CACHE_WIDTH * CACHE_HEIGHT;
+		private static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
 
 		private static const REQUESTED_WIDTH : uint = 500;
 		private static const REQUESTED_HEIGHT : uint = 500;
@@ -57,32 +64,29 @@ package {
 		private static const ALIVE_PIXEL : uint = 0xFF000000;
 		private static const DEAD_PIXEL : uint = 0xFFFFFFFF;
 		
-		private static var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private static var bbv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private static var bd : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
-		private static var bd2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
-		private static var fpsbd : BitmapData = new BitmapData(100, 50, true);
-		private static var fpsb : Bitmap = new Bitmap(fpsbd);
-		private static var ci : uint = 0;
-		private static var nci : uint = 1;
+		private static var bitVector : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
+		private static var chunkVector : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
 		
-		private static var fw : uint = CACHE_WIDTH + 2;
-		private static var fh : uint = CACHE_HEIGHT + 2;
-		private static var len : uint = fw * fh;
-		private static var innerLen : uint = CACHE_WIDTH * CACHE_HEIGHT;
-		private static var mn : uint = Math.pow(2, len);
-
-		private static var cache : Vector.<uint> = new Vector.<uint>(mn, true);
-		private static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, len - fw - 1), true);
+		private static var bitmapData : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		private static var bitmap : Bitmap = null;
+		private static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		private static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
+		private static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
+		
+		private static var currentVectorIdx : uint = 0;
+		private static var nextVectorIdx : uint = 1;
+		
+		private static var cache : Vector.<uint> = new Vector.<uint>(NUM_CACHE_PERMUTATIONS, true);
+		private static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 1), true);
 		
 		private static var cacheIdx : uint = 0;
-		private static var c : Vector.<uint> = new Vector.<uint>(len, true);
-		private static var n : Vector.<uint> = new Vector.<uint>(len, true);
+		private static var c : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
+		private static var n : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
 		private static var cc : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 		private static var nc : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 		private static var tc : Vector.<Boolean>;
-		private static var cacheRect : Rectangle = new Rectangle(1, 1, fw, fh);
-		private static var cacheRect2 : Rectangle = new Rectangle(fw + 4, 1, fw, fh);
+		private static var cacheRect : Rectangle = new Rectangle(1, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		private static var cacheRect2 : Rectangle = new Rectangle(FULL_CACHE_WIDTH + 4, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
 		private static var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
 		
 		private static var masks : Chunk = new Chunk();
@@ -115,7 +119,6 @@ package {
 		private static var fileProgress : uint = 0;
 		private static var fileSize : uint = 1;
 		
-		private static var b : Bitmap = null;
 		private static var jsonStart : * = null;
 		private static var r : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
 		private static var i : uint;
@@ -124,7 +127,7 @@ package {
 		private static var downIdx : uint;
 		private static var cst : Chunk;
 		private static var nst : Chunk;
-		private static var fpsp : Point = new Point(DISPLAY_WIDTH - fpsbd.width, 0);
+		private static var fpsp : Point = new Point(DISPLAY_WIDTH - fpsBitmapData.width, 0);
 		
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
@@ -155,10 +158,10 @@ package {
 				maskNames.push(maskName);
 			}
 
-			maskOffsets.topLeft = maskOffsets.top = maskOffsets.left = (1 + fw);
-			maskOffsets.topRight = maskOffsets.right = (2 * fw - 2);
-			maskOffsets.bottomLeft = maskOffsets.bottom = (len - 2 * fw + 1);
-			maskOffsets.bottomRight = (len - fw - 2);
+			maskOffsets.topLeft = maskOffsets.top = maskOffsets.left = (1 + FULL_CACHE_WIDTH);
+			maskOffsets.topRight = maskOffsets.right = (2 * FULL_CACHE_WIDTH - 2);
+			maskOffsets.bottomLeft = maskOffsets.bottom = (CACHE_VECTOR_LENGTH - 2 * FULL_CACHE_WIDTH + 1);
+			maskOffsets.bottomRight = (CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 2);
 
 			masks.topLeft = masks.topRight = masks.bottomLeft = masks.bottomRight = 1;
 			for (var x : uint = 0; x < CACHE_WIDTH; ++x) {
@@ -167,7 +170,7 @@ package {
 			masks.bottom = masks.top;
 			
 			var i : uint = 0;
-			for (var y : uint = 0; y < CACHE_HEIGHT; ++y, i += fw) {
+			for (var y : uint = 0; y < CACHE_HEIGHT; ++y, i += FULL_CACHE_WIDTH) {
 				masks.left |= 1 << i;
 			}
 			masks.right = masks.left;
@@ -177,16 +180,16 @@ package {
 			}
 			
 			i = 0;
-			for (y = 0; y < CACHE_HEIGHT; ++y, i += fw) {
+			for (y = 0; y < CACHE_HEIGHT; ++y, i += FULL_CACHE_WIDTH) {
 				masks.inner |= masks.top << i;
 			}
 			
 			maskNeighborOffsets.bottomRight 
-				 = maskNeighborOffsets.topLeft = maskOffsets.bottomRight - maskOffsets.topLeft + fw + 1;
+				 = maskNeighborOffsets.topLeft = maskOffsets.bottomRight - maskOffsets.topLeft + FULL_CACHE_WIDTH + 1;
 			maskNeighborOffsets.bottomLeft
-				 = maskNeighborOffsets.topRight = maskOffsets.bottomLeft - maskOffsets.topRight + fw - 1;
+				 = maskNeighborOffsets.topRight = maskOffsets.bottomLeft - maskOffsets.topRight + FULL_CACHE_WIDTH - 1;
 			maskNeighborOffsets.bottom
-				 = maskNeighborOffsets.top = maskOffsets.bottom - maskOffsets.top + fw;
+				 = maskNeighborOffsets.top = maskOffsets.bottom - maskOffsets.top + FULL_CACHE_WIDTH;
 			maskNeighborOffsets.right
 				 = maskNeighborOffsets.left = maskOffsets.right - maskOffsets.left + 1;
 			maskNeighborOffsetNegative.bottomRight = maskNeighborOffsetNegative.bottomLeft
@@ -217,8 +220,8 @@ package {
 			var v : * = j.getValue();
 			trace(JSON.encode(v));
 			*/
-			fpsb.x = DISPLAY_WIDTH - fpsb.width;
-			addChild(fpsb);
+			fpsBitmap.x = DISPLAY_WIDTH - fpsBitmap.width;
+			addChild(fpsBitmap);
 		}
 		
 		private function traceMask(maskName : String) : void {
@@ -228,11 +231,11 @@ package {
 		
 		private function _traceMask(mask : uint) : void {
 			var str : String = mask.toString(2);
-			trace((StringUtil.repeat("0", fw * fh - str.length) + str)
+			trace((StringUtil.repeat("0", FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT - str.length) + str)
 					.split('')
 					.reverse()
 					.join(" ")
-					.split(new RegExp("(" + StringUtil.repeat(". ", fw) + ")"))
+					.split(new RegExp("(" + StringUtil.repeat(". ", FULL_CACHE_WIDTH) + ")"))
 					.join("\n ")
 					.replace(/\n \n/g, "\n")
 					.substr(1));
@@ -268,14 +271,14 @@ package {
 		private function fillCache() : void {
 			//for (var i : uint = 0; i < mn; ++i) {
 				uintToVec(cacheIdx, c);
-				nextFromPrev(c, n, fw, fh);
+				nextFromPrev(c, n, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
 				full = vecToUint(n);
 				inner = full & masks.inner;
 				if (states[inner] == null) {
-					innerVector = new Vector.<uint>(innerLen, true);
+					innerVector = new Vector.<uint>(INNER_CACHE_VECTOR_LENGTH, true);
 					var i : uint = 0;
 					for (var y : uint = 1; y <= CACHE_HEIGHT; ++y) {
-						var yo : uint = y * fw;
+						var yo : uint = y * FULL_CACHE_WIDTH;
 						for (var x : uint = 1; x <= CACHE_WIDTH; ++x) {
 							innerVector[i] = (full & (1 << x + yo)) ? ALIVE_PIXEL : DEAD_PIXEL;
 							++i;
@@ -332,7 +335,7 @@ package {
 		
 		private function onEnterFrame(e : Event) : void {
 			if (LOAD && !loaded) {
-				bd2.fillRect(bd2.rect, 0x0);
+				bitmapData2.fillRect(bitmapData2.rect, 0x0);
 				if (l == null) {
 					trace("loading file");
 					var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
@@ -381,15 +384,15 @@ package {
 				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 				graphics.endFill();
 				*/
-			} else if (!LOAD && cacheIdx < mn) {
-				bd2.fillRect(bd2.rect, 0x0);
+			} else if (!LOAD && cacheIdx < NUM_CACHE_PERMUTATIONS) {
+				bitmapData2.fillRect(bitmapData2.rect, 0x0);
 				var i : uint = 0;
-				while (i < CACHE_COMPUTATIONS_PER_FRAME && cacheIdx < mn) {
+				while (i < CACHE_COMPUTATIONS_PER_FRAME && cacheIdx < NUM_CACHE_PERMUTATIONS) {
 					fillCache();
 					++i;
 				}
 				//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
-				bd.setVector(cacheRect, c);
+				bitmapData.setVector(cacheRect, c);
 				//draw(c, cacheRect, cacheMat, 10, 10);
 				draw(n, cacheRect2, cacheMat);
 				/*
@@ -399,7 +402,7 @@ package {
 				}
 				/**/
 				/**/
-				if (cacheIdx == mn) {
+				if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
 					data = 
 						"{\n" +
 						'    "width": ' + CACHE_WIDTH + ",\n" +
@@ -420,20 +423,20 @@ package {
 				graphics.clear();
 				d = null;
 				trace("initing chunks");
-				bbv[0] = new Vector.<uint>(FULL_CHUNKED_LENGTH);
-				bbv[1] = new Vector.<uint>(FULL_CHUNKED_LENGTH);
+				chunkVector[0] = new Vector.<uint>(FULL_CHUNKED_LENGTH);
+				chunkVector[1] = new Vector.<uint>(FULL_CHUNKED_LENGTH);
 				if (false) {
 					for (var y : uint = 1; y < CHUNKED_HEIGHT - 1; ++y) {
 						var yo : uint = FULL_CHUNKED_WIDTH * y;
 						for (var x : uint = 1; x < CHUNKED_WIDTH - 1; ++x) {
-							bbv[0][x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+							chunkVector[0][x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
 						}
 					}
 				} else {
 					for (var y : uint = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
 						var yo : uint = FULL_CHUNKED_WIDTH * y;
 						for (var x : uint = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
-							bbv[0][x + yo] = masks.inner;
+							chunkVector[0][x + yo] = masks.inner;
 						}
 					}
 				}
@@ -455,15 +458,15 @@ package {
 					trace(s);
 				}
 				*/
-				if (b == null) {
-					b = new Bitmap(bd);
-					b.x = -CACHE_WIDTH;
-					b.y = -CACHE_HEIGHT;
-					addChild(b);
-					if (fpsb.parent != null) {
-						fpsb.parent.removeChild(fpsb);
+				if (bitmap == null) {
+					bitmap = new Bitmap(bitmapData);
+					bitmap.x = -CACHE_WIDTH;
+					bitmap.y = -CACHE_HEIGHT;
+					addChild(bitmap);
+					if (fpsBitmap.parent != null) {
+						fpsBitmap.parent.removeChild(fpsBitmap);
 					}
-					addChild(fpsb);
+					addChild(fpsBitmap);
 				}
 				drawChunked();
 				/** /
@@ -490,9 +493,9 @@ package {
 			r.x = 0;
 			r.y = 0;
 			*/
-			c = bbv[ci];
-			n = bbv[nci];
-			bd.lock();
+			c = chunkVector[currentVectorIdx];
+			n = chunkVector[nextVectorIdx];
+			bitmapData.lock();
 			nc = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 			for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
 				if (
@@ -509,7 +512,7 @@ package {
 
 				r.x = i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
 				r.y = int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
-				bd.setVector(r, states[c[i]].vector);
+				bitmapData.setVector(r, states[c[i]].vector);
 				upIdx = i - FULL_CHUNKED_WIDTH;
 				downIdx = i + FULL_CHUNKED_WIDTH;
 				n[i] = cache[
@@ -561,16 +564,16 @@ package {
 				}
 				*/
 			}
-			bd.unlock();
+			bitmapData.unlock();
 			/** /
 			graphics.clear();
 			graphics.beginBitmapFill(bd);
 			graphics.drawRect(0, 0, W, H);
 			graphics.endFill();
 			/**/
-			i = ci;
-			ci = nci;
-			nci = i;
+			i = currentVectorIdx;
+			currentVectorIdx = nextVectorIdx;
+			nextVectorIdx = i;
 			
 			tc = cc;
 			cc = nc;
@@ -578,10 +581,10 @@ package {
 		}
 		
 		private function nextFrame() : void {
-			var c : Vector.<uint> = bv[ci];
-			ci++;
-			ci %= bv.length;
-			var n : Vector.<uint> = bv[ci];
+			var c : Vector.<uint> = bitVector[currentVectorIdx];
+			currentVectorIdx++;
+			currentVectorIdx %= bitVector.length;
+			var n : Vector.<uint> = bitVector[currentVectorIdx];
 			nextFromPrev(c, n, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 		}
 		
@@ -644,21 +647,21 @@ package {
 			//bd2.setVector(rect, vec);
 			//bd.fillRect(bd.rect, 0xFFFFFFFF);
 			//bd.applyFilter(bd2, bd.rect, p, filter);
-			bd.setVector(rect, vec);
+			bitmapData.setVector(rect, vec);
 			graphics.clear();
-			graphics.beginBitmapFill(bd, mat);
+			graphics.beginBitmapFill(bitmapData, mat);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
 			/**/
-			if (cacheIdx < mn) {
-				drawProgressBar(cacheIdx, mn, int(DISPLAY_HEIGHT * 3 / 4));
+			if (cacheIdx < NUM_CACHE_PERMUTATIONS) {
+				drawProgressBar(cacheIdx, NUM_CACHE_PERMUTATIONS, int(DISPLAY_HEIGHT * 3 / 4));
 				
-				DText.draw(bd2, String(cacheIdx - 1), 10 + 10 * fw / 2, 15 + 10 * fh, DText.CENTER);
-				DText.draw(bd2, String((cacheIdx - 1) & masks.inner), 10 + 10 * fw / 2, 35 + 10 * fh, DText.CENTER);
+				DText.draw(bitmapData2, String(cacheIdx - 1), 10 + 10 * FULL_CACHE_WIDTH / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+				DText.draw(bitmapData2, String((cacheIdx - 1) & masks.inner), 10 + 10 * FULL_CACHE_WIDTH / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
 
-				DText.draw(bd2, String(full), 40 + 10 * fw * 3 / 2, 15 + 10 * fh, DText.CENTER);
-				DText.draw(bd2, String(inner), 40 + 10 * fw * 3 / 2, 35 + 10 * fh, DText.CENTER);
-				graphics.beginBitmapFill(bd2);
+				DText.draw(bitmapData2, String(full), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+				DText.draw(bitmapData2, String(inner), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+				graphics.beginBitmapFill(bitmapData2);
 				graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 				graphics.endFill();
 			}
@@ -674,18 +677,18 @@ package {
 			graphics.drawRect(int(DISPLAY_WIDTH / 4 + 2), y + 2, int(DISPLAY_WIDTH / 2 - 3) * cur / tot, 17);
 			graphics.endFill();
 			
-			DText.draw(bd2, Number(cur * 100 / tot).toFixed(1) + "%", int(DISPLAY_WIDTH / 2), y + 2, DText.CENTER);
+			DText.draw(bitmapData2, Number(cur * 100 / tot).toFixed(1) + "%", int(DISPLAY_WIDTH / 2), y + 2, DText.CENTER);
 			
-			graphics.beginBitmapFill(bd2);
+			graphics.beginBitmapFill(bitmapData2);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
 		}
 		
 		private function drawFPS() : void {
-			fpsbd.lock();
-			fpsbd.fillRect(fpsbd.rect, 0x00000000);
-			DText.draw(fpsbd, FPSCounter.update(), fpsbd.width - 1, 0, DText.RIGHT);
-			fpsbd.unlock();
+			fpsBitmapData.lock();
+			fpsBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);
+			DText.draw(fpsBitmapData, FPSCounter.update(), fpsBitmapData.width - 1, 0, DText.RIGHT);
+			fpsBitmapData.unlock();
 			//bd.copyPixels(fpsbd, fpsbd.rect, fpsp, null, null, true);
 			/** /
 			graphics.beginBitmapFill(fpsbd);
