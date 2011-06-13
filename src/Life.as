@@ -27,13 +27,16 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="504", height="500")]
+	[SWF(frameRate="100", width="500", height="500")]
 	public class Life extends Sprite {
 		private static const CACHE_WIDTH : uint = 2;
 		private static const CACHE_HEIGHT : uint = 2;
 
-		private static const DISPLAY_WIDTH : uint = int(504 / CACHE_WIDTH) * CACHE_WIDTH;
-		private static const DISPLAY_HEIGHT : uint = int(500 / CACHE_HEIGHT) * CACHE_HEIGHT;
+		private static const REQUESTED_WIDTH : uint = 500;
+		private static const REQUESTED_HEIGHT : uint = 500;
+		
+		private static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
+		private static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
 
 		private static const CHUNKED_WIDTH : uint = DISPLAY_WIDTH / CACHE_WIDTH;
 		private static const CHUNKED_HEIGHT : uint = DISPLAY_HEIGHT / CACHE_HEIGHT;
