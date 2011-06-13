@@ -29,11 +29,11 @@ package {
 	
 	[SWF(frameRate="100", width="504", height="500")]
 	public class Life extends Sprite {
-		private static const DISPLAY_WIDTH : uint = 504;
-		private static const DISPLAY_HEIGHT : uint = 500;
-		
 		private static const CACHE_WIDTH : uint = 2;
 		private static const CACHE_HEIGHT : uint = 2;
+
+		private static const DISPLAY_WIDTH : uint = int(504 / CACHE_WIDTH) * CACHE_WIDTH;
+		private static const DISPLAY_HEIGHT : uint = int(500 / CACHE_HEIGHT) * CACHE_HEIGHT;
 
 		private static const CHUNKED_WIDTH : uint = DISPLAY_WIDTH / CACHE_WIDTH;
 		private static const CHUNKED_HEIGHT : uint = DISPLAY_HEIGHT / CACHE_HEIGHT;
@@ -42,8 +42,10 @@ package {
 		private static const FULL_CHUNKED_HEIGHT : uint = CHUNKED_HEIGHT + 2;
 		
 		private static const FULL_CHUNKED_LENGTH : uint = FULL_CHUNKED_WIDTH * FULL_CHUNKED_HEIGHT;
-
 		private static const FULL_CHUNKED_LIVE_LENGTH : uint = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH;
+		
+		private static const FULL_DISPLAY_WIDTH : uint = DISPLAY_WIDTH + CACHE_WIDTH * 2;
+		private static const FULL_DISPLAY_HEIGHT : uint = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
 
 		private static const LOAD : Boolean = true;
 
@@ -54,10 +56,10 @@ package {
 		
 		private static var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
 		private static var bbv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private static var bd : BitmapData = new BitmapData(DISPLAY_WIDTH + 2, DISPLAY_HEIGHT + 2, true);
+		private static var bd : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		private static var bd2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var fpsbd : BitmapData = new BitmapData(100, 50, true);
 		private static var fpsb : Bitmap = new Bitmap(fpsbd);
-		private static var bd2 : BitmapData = new BitmapData(DISPLAY_WIDTH + 2, DISPLAY_HEIGHT + 2, true);
 		private static var ci : uint = 0;
 		private static var nci : uint = 1;
 		
@@ -452,8 +454,8 @@ package {
 				*/
 				if (b == null) {
 					b = new Bitmap(bd);
-					b.x = -1;
-					b.y = -1;
+					b.x = -CACHE_WIDTH;
+					b.y = -CACHE_HEIGHT;
 					addChild(b);
 					if (fpsb.parent != null) {
 						fpsb.parent.removeChild(fpsb);
@@ -642,7 +644,7 @@ package {
 			bd.setVector(rect, vec);
 			graphics.clear();
 			graphics.beginBitmapFill(bd, mat);
-			graphics.drawRect(-1, -1, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
 			/**/
 			if (cacheIdx < mn) {
@@ -654,7 +656,7 @@ package {
 				DText.draw(bd2, String(full), 40 + 10 * fw * 3 / 2, 15 + 10 * fh, DText.CENTER);
 				DText.draw(bd2, String(inner), 40 + 10 * fw * 3 / 2, 35 + 10 * fh, DText.CENTER);
 				graphics.beginBitmapFill(bd2);
-				graphics.drawRect(-1, -1, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+				graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 				graphics.endFill();
 			}
 			//drawFPS();
@@ -672,7 +674,7 @@ package {
 			DText.draw(bd2, Number(cur * 100 / tot).toFixed(1) + "%", int(DISPLAY_WIDTH / 2), y + 2, DText.CENTER);
 			
 			graphics.beginBitmapFill(bd2);
-			graphics.drawRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
 		}
 		
