@@ -244,58 +244,41 @@ package {
 		}
 		
 		private function fillCache() : void {
-			//for (var i : uint = 0; i < mn; ++i) {
-				uintToVec(cacheIdx, currentStates);
-				nextFromPrev(currentStates, nextStates, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-				full = vecToUint(nextStates);
-				inner = full & masks.inner;
-				if (states[inner] == null) {
-					innerVector = new Vector.<uint>(INNER_CACHE_VECTOR_LENGTH, true);
-					var i : uint = 0;
-					for (var y : uint = 1; y <= CACHE_HEIGHT; ++y) {
-						var yo : uint = y * FULL_CACHE_WIDTH;
-						for (var x : uint = 1; x <= CACHE_WIDTH; ++x) {
-							innerVector[i] = (full & (1 << x + yo)) ? ALIVE_PIXEL : DEAD_PIXEL;
-							++i;
-						}
+			uintToVec(cacheIdx, currentStates);
+			nextFromPrev(currentStates, nextStates, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+			full = vecToUint(nextStates);
+			inner = full & masks.inner;
+			if (states[inner] == null) {
+				innerVector = new Vector.<uint>(INNER_CACHE_VECTOR_LENGTH, true);
+				var i : uint = 0;
+				for (var y : uint = 1; y <= CACHE_HEIGHT; ++y) {
+					var yo : uint = y * FULL_CACHE_WIDTH;
+					for (var x : uint = 1; x <= CACHE_WIDTH; ++x) {
+						innerVector[i] = (full & (1 << x + yo)) ? ALIVE_PIXEL : DEAD_PIXEL;
+						++i;
 					}
-					state = new Chunk();
-					state.vector = innerVector;
-					for each (maskName in maskNames) {
-						state[maskName] = (masks[maskName] & full); // & inner would be the same since the masks are all for the inner rect
-							//<< maskNeighborOffsets[maskName];
-						if (maskNeighborOffsetNegative[maskName] == 1) {
-							state[maskName] >>= maskNeighborOffsets[maskName]
-						} else {
-							state[maskName] <<= maskNeighborOffsets[maskName]; //precalculate moving this masked bit to the place it needs to be for neighbor use
-						}
-					}
-					states[inner] = state;
 				}
-				cache[cacheIdx] = inner;
-				++cacheIdx;
-			//}
+				state = new Chunk();
+				state.vector = innerVector;
+				for each (maskName in maskNames) {
+					state[maskName] = (masks[maskName] & full); // & inner would be the same since the masks are all for the inner rect
+					//precalculate moving this masked bit to the place it needs to be for neighbor use
+					if (maskNeighborOffsetNegative[maskName] == 1) {
+						state[maskName] >>= maskNeighborOffsets[maskName]
+					} else {
+						state[maskName] <<= maskNeighborOffsets[maskName];
+					}
+				}
+				states[inner] = state;
+			}
+			cache[cacheIdx] = inner;
+			++cacheIdx;
 		}
 		
 		private function onLoadComplete(e : Event) : void {
 			trace("file loaded");
 			jsonDecoder = new JSONDecoderAsync(e.target.data, true);
 			jsonStartTime = getTimer();
-			/*
-			var o : Object = JSON.decode(e.target.data);
-			for (var i : uint = 0; i < cache.length; ++i) {
-				cache[i] = o.cache[i];
-			}
-			for (i = 0; i < states.length; ++i) {
-				var c : Chunk;
-				if (o.states[i] == null) {
-					c = null;
-				} else {
-					c = new Chunk(o.states[i]);
-				}
-				states[i] = c;
-			}
-			*/
 			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
 		}
 				
@@ -370,13 +353,7 @@ package {
 				bitmapData.setVector(cacheRect, currentStates);
 				//draw(c, cacheRect, cacheMat, 10, 10);
 				draw(nextStates, cacheRect2, cacheMat);
-				/*
-				for each (maskName in maskNames) {
-				trace("16 " + maskName);
-				_traceMask(states[16][maskName]);
-				}
-				/**/
-				/**/
+				
 				if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
 					dataString = 
 						"{\n" +
@@ -394,14 +371,13 @@ package {
 						'    states: [' + states + "]\n" +
 						'}';
 					*/
-					trace(dataString);
+					//trace(dataString);
 				}
 				/*
 				graphics.beginBitmapFill(fpsbd);
 				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 				graphics.endFill();
 				*/
-				/**/
 			} else if (reset) {
 				reset = false;
 				graphics.clear();
@@ -461,7 +437,6 @@ package {
 				/**/
 				FPSCounter.reset();
 			} else {
-				//nextChunkedFrame();
 				drawChunked();
 			/*
 			} else {
@@ -606,23 +581,7 @@ package {
 				}
 			}
 		}
-		/*
-		private static var p : Point = new Point(0, 0);
-		private static var invertFilter : BitmapFilter = new ColorMatrixFilter(
-			[
-				-1,    0,    0,   0,    0,
-			     0,   -1,    0,   0,    0,
-			     0,    0,   -1,   0,    0,
-				 0,    0,    0,   1,    0
-			]);
-		private static var compressFilter : BitmapFilter = new ColorMatrixFilter(
-			[
-				 245,    0,    0,    0,   10,
-				   0,  245,    0,    0,   10,
-				   0,    0,  245,    0,   10,
-				   0,    0,    0,    0,  255
-			]);
-		*/
+
 		private function draw(vec : Vector.<uint>, rect : Rectangle, mat : Matrix = null) : void {
 			//bd2.fillRect(bd2.rect, 0xFF000000);
 			//bd2.setVector(rect, vec);
@@ -633,7 +592,7 @@ package {
 			graphics.beginBitmapFill(bitmapData, mat);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
-			/**/
+
 			if (cacheIdx < NUM_CACHE_PERMUTATIONS) {
 				drawProgressBar(cacheIdx, NUM_CACHE_PERMUTATIONS, int(DISPLAY_HEIGHT * 3 / 4));
 				
@@ -647,7 +606,6 @@ package {
 				graphics.endFill();
 			}
 			//drawFPS();
-			/**/
 		}
 		
 		private function drawProgressBar(cur : uint, tot : uint, y : uint) : void {
