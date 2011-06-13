@@ -32,7 +32,7 @@ package {
 		private static const W : uint = 504;
 		private static const H : uint = 500;
 		
-		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_WIDTH : uint = 2;
 		private static const CACHE_HEIGHT : uint = 2;
 
 		private static const CHUNKED_W : uint = W / CACHE_WIDTH;
@@ -58,44 +58,44 @@ package {
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
 		}
 		
-		private var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private var bbv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
-		private var bd : BitmapData = new BitmapData(W + 2, H + 2, true);
-		private var fpsbd : BitmapData = new BitmapData(100, 50, true);
-		private var fpsb : Bitmap = new Bitmap(fpsbd);
-		private var bd2 : BitmapData = new BitmapData(W + 2, H + 2, true);
-		private var ci : uint = 0;
-		private var nci : uint = 1;
+		private static var bv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
+		private static var bbv : Vector.<Vector.<uint>> = new Vector.<Vector.<uint>>(2, true);
+		private static var bd : BitmapData = new BitmapData(W + 2, H + 2, true);
+		private static var fpsbd : BitmapData = new BitmapData(100, 50, true);
+		private static var fpsb : Bitmap = new Bitmap(fpsbd);
+		private static var bd2 : BitmapData = new BitmapData(W + 2, H + 2, true);
+		private static var ci : uint = 0;
+		private static var nci : uint = 1;
 		
-		private var fw : uint = CACHE_WIDTH + 2;
-		private var fh : uint = CACHE_HEIGHT + 2;
-		private var len : uint = fw * fh;
-		private var innerLen : uint = CACHE_WIDTH * CACHE_HEIGHT;
-		private var mn : uint = Math.pow(2, len);
+		private static var fw : uint = CACHE_WIDTH + 2;
+		private static var fh : uint = CACHE_HEIGHT + 2;
+		private static var len : uint = fw * fh;
+		private static var innerLen : uint = CACHE_WIDTH * CACHE_HEIGHT;
+		private static var mn : uint = Math.pow(2, len);
 
-		private var cache : Vector.<uint> = new Vector.<uint>(mn, true);
-		private var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, len - fw - 1), true);
+		private static var cache : Vector.<uint> = new Vector.<uint>(mn, true);
+		private static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, len - fw - 1), true);
 		
-		private var cacheIdx : uint = 0;
-		private var c : Vector.<uint> = new Vector.<uint>(len, true);
-		private var n : Vector.<uint> = new Vector.<uint>(len, true);
-		private var cc : Vector.<Boolean> = new Vector.<Boolean>(F_CHUNKED_LEN, true);
-		private var nc : Vector.<Boolean> = new Vector.<Boolean>(F_CHUNKED_LEN, true);
-		private var tc : Vector.<Boolean>;
-		private var cacheRect : Rectangle = new Rectangle(1, 1, fw, fh);
-		private var cacheRect2 : Rectangle = new Rectangle(fw + 4, 1, fw, fh);
-		private var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
+		private static var cacheIdx : uint = 0;
+		private static var c : Vector.<uint> = new Vector.<uint>(len, true);
+		private static var n : Vector.<uint> = new Vector.<uint>(len, true);
+		private static var cc : Vector.<Boolean> = new Vector.<Boolean>(F_CHUNKED_LEN, true);
+		private static var nc : Vector.<Boolean> = new Vector.<Boolean>(F_CHUNKED_LEN, true);
+		private static var tc : Vector.<Boolean>;
+		private static var cacheRect : Rectangle = new Rectangle(1, 1, fw, fh);
+		private static var cacheRect2 : Rectangle = new Rectangle(fw + 4, 1, fw, fh);
+		private static var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
 		
-		private var masks : Chunk = new Chunk();
-		private var maskOffsets : Chunk = new Chunk();
-		private var maskNeighborOffsets : Chunk = new Chunk();
-		private var maskNeighborOffsetNegative : Chunk = new Chunk();
-		private var maskNames : Vector.<String> = new Vector.<String>();
+		private static var masks : Chunk = new Chunk();
+		private static var maskOffsets : Chunk = new Chunk();
+		private static var maskNeighborOffsets : Chunk = new Chunk();
+		private static var maskNeighborOffsetNegative : Chunk = new Chunk();
+		private static var maskNames : Vector.<String> = new Vector.<String>();
 		
-		private var data : String = null;
-		private var f : FileReference;
+		private static var data : String = null;
+		private static var f : FileReference;
 		
-		private var reset : Boolean = true;
+		private static var reset : Boolean = true;
 		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
@@ -231,11 +231,11 @@ package {
 			return i;
 		}
 		
-		private var full : uint;
-		private var inner : uint;
-		private var state : Chunk;
-		private var maskName : String;
-		private var innerVector : Vector.<uint>;
+		private static var full : uint;
+		private static var inner : uint;
+		private static var state : Chunk;
+		private static var maskName : String;
+		private static var innerVector : Vector.<uint>;
 		private function fillCache() : void {
 			//for (var i : uint = 0; i < mn; ++i) {
 				uintToVec(cacheIdx, c);
@@ -270,11 +270,11 @@ package {
 			//}
 		}
 		
-		private var d : JSONDecoderAsync = null;
-		private var dataObj : Object = null;
-		//private var dataObj : Object = LifeData.data3x3;
+		private static var d : JSONDecoderAsync = null;
+		private static var dataObj : Object = null;
+		//private static var dataObj : Object = LifeData.data3x3;
 		
-		//private var dataObj : Object = null;
+		//private static var dataObj : Object = null;
 		private function onLoadComplete(e : Event) : void {
 			trace("file loaded");
 			d = new JSONDecoderAsync(e.target.data, true);
@@ -297,15 +297,15 @@ package {
 			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
 		}
 		
-		private var l : URLLoader = null;
-		private var cacheLoadIdx : uint = 0;
-		private var stateLoadIdx : uint = 0;
-		private var loaded : Boolean = false;
+		private static var l : URLLoader = null;
+		private static var cacheLoadIdx : uint = 0;
+		private static var stateLoadIdx : uint = 0;
+		private static var loaded : Boolean = false;
 		private static var PROGRESS_Y : uint = 300;
-		private var fileProgress : uint = 0;
-		private var fileSize : uint = 1;
+		private static var fileProgress : uint = 0;
+		private static var fileSize : uint = 1;
 		
-		private var b : Bitmap = null;
+		private static var b : Bitmap = null;
 		
 		private function onIoError(e : Event) : void {
 			trace(e);
@@ -316,7 +316,7 @@ package {
 			fileSize = e.bytesTotal;
 		}
 		
-		private var jsonStart : * = null;
+		private static var jsonStart : * = null;
 		private function onEnterFrame(e : Event) : void {
 			if (LOAD && !loaded) {
 				bd2.fillRect(bd2.rect, 0x0);
@@ -472,13 +472,13 @@ package {
 			drawFPS();
 		}
 		
-		private var r : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
-		private var i : uint;
-		private var m : uint;
-		private var upIdx : uint;
-		private var downIdx : uint;
-		private var cst : Chunk;
-		private var nst : Chunk;
+		private static var r : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
+		private static var i : uint;
+		private static var m : uint;
+		private static var upIdx : uint;
+		private static var downIdx : uint;
+		private static var cst : Chunk;
+		private static var nst : Chunk;
 		private function drawChunked() : void {
 			/*
 			r.x = 0;
@@ -617,15 +617,15 @@ package {
 			}
 		}
 		/*
-		private var p : Point = new Point(0, 0);
-		private var invertFilter : BitmapFilter = new ColorMatrixFilter(
+		private static var p : Point = new Point(0, 0);
+		private static var invertFilter : BitmapFilter = new ColorMatrixFilter(
 			[
 				-1,    0,    0,   0,    0,
 			     0,   -1,    0,   0,    0,
 			     0,    0,   -1,   0,    0,
 				 0,    0,    0,   1,    0
 			]);
-		private var compressFilter : BitmapFilter = new ColorMatrixFilter(
+		private static var compressFilter : BitmapFilter = new ColorMatrixFilter(
 			[
 				 245,    0,    0,    0,   10,
 				   0,  245,    0,    0,   10,
@@ -675,7 +675,7 @@ package {
 			graphics.endFill();
 		}
 		
-		private var fpsp : Point = new Point(W - fpsbd.width, 0);
+		private static var fpsp : Point = new Point(W - fpsbd.width, 0);
 		private function drawFPS() : void {
 			fpsbd.lock();
 			fpsbd.fillRect(fpsbd.rect, 0x00000000);
@@ -688,41 +688,5 @@ package {
 			graphics.endFill();
 			/**/
 		}
-	}
-}
-
-import flash.utils.describeType;
-
-class Chunk extends Object {
-	public function Chunk(o : Object = null) {
-		if (o == null) {
-			return;
-		}
-		for each (var n : String in describeType(this).variable.@name) {
-			if (n == "vector") {
-				this[n] = Vector.<uint>(o[n]);
-			} else {
-				this[n] = o[n];
-			}
-		}
-	}
-	
-	public var inner : uint;
-	public var top : uint;
-	public var bottom : uint;
-	public var left : uint;
-	public var right : uint;
-	public var topRight : uint;
-	public var topLeft : uint;
-	public var bottomRight : uint;
-	public var bottomLeft : uint;
-	public var vector : Vector.<uint>;
-	
-	public function toString() : String {
-		var v : Vector.<String> = new Vector.<String>();
-		for each (var n : String in describeType(this).variable.@name) {
-			v.push('"' + n + '": ' + (this[n] is Vector.<uint> ? "[" + this[n] + "]" : this[n]));
-		}
-		return "{" + v.join(",") + "}";
 	}
 }
