@@ -27,7 +27,7 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="500", height="500")]
+	[SWF(frameRate="100", width="1000", height="1000")]
 	public class Life extends Sprite {
 		private static const CACHE_WIDTH : uint = 2;
 		private static const CACHE_HEIGHT : uint = 2;
@@ -39,8 +39,8 @@ package {
 		private static const INNER_CACHE_VECTOR_LENGTH : uint = CACHE_WIDTH * CACHE_HEIGHT;
 		private static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
 
-		private static const REQUESTED_WIDTH : uint = 500;
-		private static const REQUESTED_HEIGHT : uint = 500;
+		private static const REQUESTED_WIDTH : uint = 1000;
+		private static const REQUESTED_HEIGHT : uint = 1000;
 		
 		private static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
 		private static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
@@ -63,6 +63,8 @@ package {
 		
 		private static const ALIVE_PIXEL : uint = 0xFF000000;
 		private static const DEAD_PIXEL : uint = 0xFFFFFFFF;
+
+		private static const PROGRESS_Y : uint = 300;
 		
 		private static var bitmapData : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var bitmap : Bitmap = null;
@@ -93,7 +95,7 @@ package {
 		private static var maskNames : Vector.<String> = new Vector.<String>();
 		
 		private static var dataString : String = null;
-		private static var f : FileReference;
+		private static var fileRef : FileReference;
 		
 		private static var reset : Boolean = true;
 		
@@ -102,27 +104,25 @@ package {
 		private static var state : Chunk;
 		private static var maskName : String;
 		private static var innerVector : Vector.<uint>;
-		private static var d : JSONDecoderAsync = null;
-		private static var dataObj : Object = null;
-		//private static var dataObj : Object = LifeData.data2x2;
+		private static var jsonDecoder : JSONDecoderAsync = null;
+		private static var loadedDataObject : Object = null;
+		//private static var loadedDataObject : Object = LifeData.data2x2;
 		
-		private static var l : URLLoader = null;
+		private static var loader : URLLoader = null;
 		private static var cacheLoadIdx : uint = 0;
 		private static var stateLoadIdx : uint = 0;
 		private static var loaded : Boolean = false;
-		private static var PROGRESS_Y : uint = 300;
 		private static var fileProgress : uint = 0;
 		private static var fileSize : uint = 1;
 		
-		private static var jsonStart : * = null;
-		private static var r : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
+		private static var jsonStartTime : * = null;
+		private static var chunkRect : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
 		private static var i : uint;
-		private static var m : uint;
 		private static var upIdx : uint;
 		private static var downIdx : uint;
-		private static var cst : Chunk;
-		private static var nst : Chunk;
-		private static var fpsp : Point = new Point(DISPLAY_WIDTH - fpsBitmapData.width, 0);
+		private static var currentState : Chunk;
+		private static var nextState : Chunk;
+
 		
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
@@ -142,8 +142,8 @@ package {
 					return;
 				}
 				var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
-				f = new FileReference();
-				f.save(dataString, fn);
+				fileRef = new FileReference();
+				fileRef.save(dataString, fn);
 			});
 			
 			for each (maskName in describeType(masks).variable.@name) {
@@ -194,27 +194,7 @@ package {
 				traceMask(maskName);
 			}
 			*/
-			/*
-			filters = [
-				compressFilter,
-				//invertFilter
-			];
-			
-			var cm : ColorMatrix = new ColorMatrix();
-			cm.adjustSaturation(-100);
-			invertFilter = new ColorMatrixFilter(cm.matrix);
-			*/
-			/*
-			var j : JSONDecoderAsync = new JSONDecoderAsync(JSON.encode([{key: "val", key2: 2, o: {}, a: [], o2: {k: "y"}, arr: [1, 2, "3", 4]}, 5, [5, 4, 3], 6]), true);
-			i = 0;
-			while (!j.done) {
-				trace("loop " + i);
-				j.loop();
-				++i;
-			}
-			var v : * = j.getValue();
-			trace(JSON.encode(v));
-			*/
+
 			fpsBitmap.x = DISPLAY_WIDTH - fpsBitmap.width;
 			addChild(fpsBitmap);
 		}
@@ -299,8 +279,8 @@ package {
 		
 		private function onLoadComplete(e : Event) : void {
 			trace("file loaded");
-			d = new JSONDecoderAsync(e.target.data, true);
-			jsonStart = getTimer();
+			jsonDecoder = new JSONDecoderAsync(e.target.data, true);
+			jsonStartTime = getTimer();
 			/*
 			var o : Object = JSON.decode(e.target.data);
 			for (var i : uint = 0; i < cache.length; ++i) {
@@ -331,37 +311,37 @@ package {
 		private function onEnterFrame(e : Event) : void {
 			if (LOAD && !loaded) {
 				bitmapData2.fillRect(bitmapData2.rect, 0x0);
-				if (l == null) {
+				if (loader == null) {
 					trace("loading file");
 					var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
-					l = new URLLoader(u);
-					l.addEventListener(Event.COMPLETE, onLoadComplete);
-					l.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
-					l.addEventListener(ProgressEvent.PROGRESS, onProgress);
-				} else if (d != null) {
-					if (dataObj == null && !d.done) {
+					loader = new URLLoader(u);
+					loader.addEventListener(Event.COMPLETE, onLoadComplete);
+					loader.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
+					loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
+				} else if (jsonDecoder != null) {
+					if (loadedDataObject == null && !jsonDecoder.done) {
 						//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
 						for (i = 0; i < 150000; ++i) {
-							if (d.loop()) {
-								trace(((getTimer() - jsonStart) / 1000).toFixed(4) + "s parsing JSON");
-								dataObj = d.getValue();
+							if (jsonDecoder.loop()) {
+								trace(((getTimer() - jsonStartTime) / 1000).toFixed(4) + "s parsing JSON");
+								loadedDataObject = jsonDecoder.getValue();
 								break;
 							}
 						}
 					} else if (cacheLoadIdx < cache.length) {
 						//trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
 						for (i = 0; i < 60000 && cacheLoadIdx < cache.length; ++i) {
-							cache[cacheLoadIdx] = dataObj.cache[cacheLoadIdx];
+							cache[cacheLoadIdx] = loadedDataObject.cache[cacheLoadIdx];
 							++cacheLoadIdx;
 						}
 					} else if (stateLoadIdx < states.length) {
 						//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
 						for (i = 0; i < 60000 && stateLoadIdx < states.length; ++i) {
 							var ch : Chunk;
-							if (dataObj.states[stateLoadIdx] == null) {
+							if (loadedDataObject.states[stateLoadIdx] == null) {
 								ch = null;
 							} else {
-								ch = new Chunk(dataObj.states[stateLoadIdx]);
+								ch = new Chunk(loadedDataObject.states[stateLoadIdx]);
 							}
 							states[stateLoadIdx] = ch;
 							++stateLoadIdx;
@@ -371,7 +351,7 @@ package {
 				}
 
 				drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
-				drawProgressBar(d != null ? d.tokenizer.loc : 0, d != null ? d.tokenizer.jsonString.length : 1, PROGRESS_Y + 22);
+				drawProgressBar(jsonDecoder != null ? jsonDecoder.tokenizer.loc : 0, jsonDecoder != null ? jsonDecoder.tokenizer.jsonString.length : 1, PROGRESS_Y + 22);
 				drawProgressBar(cacheLoadIdx, cache.length, PROGRESS_Y + 44);
 				drawProgressBar(stateLoadIdx, states.length, PROGRESS_Y + 66);
 				/*
@@ -425,7 +405,7 @@ package {
 			} else if (reset) {
 				reset = false;
 				graphics.clear();
-				d = null;
+				jsonDecoder = null;
 				trace("initing chunks");
 				currentStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
 				nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
@@ -512,9 +492,9 @@ package {
 					continue;
 				}
 
-				r.x = i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
-				r.y = int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
-				bitmapData.setVector(r, states[currentStates[i]].vector);
+				chunkRect.x = i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
+				chunkRect.y = int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
+				bitmapData.setVector(chunkRect, states[currentStates[i]].vector);
 				upIdx = i - FULL_CHUNKED_WIDTH;
 				downIdx = i + FULL_CHUNKED_WIDTH;
 				nextStates[i] = cache[
@@ -530,31 +510,31 @@ package {
 					+ states[currentStates[downIdx + 1]].topLeft
 				];
 				if (currentStates[i] ^ nextStates[i]) {
-					cst = states[currentStates[i]];
-					nst = states[nextStates[i]];
+					currentState = states[currentStates[i]];
+					nextState = states[nextStates[i]];
 					nextChunksToCheck[i] = true;
-					if (cst.bottom ^ nst.bottom) {
+					if (currentState.bottom ^ nextState.bottom) {
 						nextChunksToCheck[downIdx] = true;
 					}
-					if (cst.top ^ nst.top) {
+					if (currentState.top ^ nextState.top) {
 						nextChunksToCheck[upIdx] = true;
 					}
-					if (cst.left ^ nst.left) {
+					if (currentState.left ^ nextState.left) {
 						nextChunksToCheck[i - 1] = true;
 					}
-					if (cst.right ^ nst.right) {
+					if (currentState.right ^ nextState.right) {
 						nextChunksToCheck[i + 1] = true;
 					}
-					if (cst.bottomLeft ^ nst.bottomLeft) {
+					if (currentState.bottomLeft ^ nextState.bottomLeft) {
 						nextChunksToCheck[downIdx - 1] = true;
 					}
-					if (cst.bottomRight ^ nst.bottomRight) {
+					if (currentState.bottomRight ^ nextState.bottomRight) {
 						nextChunksToCheck[downIdx + 1] = true;
 					}
-					if (cst.topLeft ^ nst.topLeft) {
+					if (currentState.topLeft ^ nextState.topLeft) {
 						nextChunksToCheck[upIdx - 1] = true;
 					}
-					if (cst.topRight ^ nst.topRight) {
+					if (currentState.topRight ^ nextState.topRight) {
 						nextChunksToCheck[upIdx + 1] = true;
 					}
 				}
@@ -690,7 +670,6 @@ package {
 			fpsBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);
 			DText.draw(fpsBitmapData, FPSCounter.update(), fpsBitmapData.width - 1, 0, DText.RIGHT);
 			fpsBitmapData.unlock();
-			//bd.copyPixels(fpsbd, fpsbd.rect, fpsp, null, null, true);
 			/** /
 			graphics.beginBitmapFill(fpsbd);
 			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
