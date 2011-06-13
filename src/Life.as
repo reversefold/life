@@ -27,10 +27,10 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="1000", height="1000")]
+	[SWF(frameRate="100", width="1000", height="600")]
 	public class Life extends Sprite {
-		private static const CACHE_WIDTH : uint = 2;
-		private static const CACHE_HEIGHT : uint = 2;
+		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_HEIGHT : uint = 3;
 		
 		private static const FULL_CACHE_WIDTH : uint = CACHE_WIDTH + 2;
 		private static const FULL_CACHE_HEIGHT : uint = CACHE_HEIGHT + 2;
@@ -40,7 +40,7 @@ package {
 		private static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
 
 		private static const REQUESTED_WIDTH : uint = 1000;
-		private static const REQUESTED_HEIGHT : uint = 1000;
+		private static const REQUESTED_HEIGHT : uint = 600;
 		
 		private static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
 		private static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
@@ -97,8 +97,6 @@ package {
 		private static var dataString : String = null;
 		private static var fileRef : FileReference;
 		
-		private static var reset : Boolean = true;
-		
 		private static var full : uint;
 		private static var inner : uint;
 		private static var state : Chunk;
@@ -122,29 +120,56 @@ package {
 		private static var downIdx : uint;
 		private static var currentState : Chunk;
 		private static var nextState : Chunk;
-
+		
+		private static var enterFrameListener : Function;
+		
+		private static var random : Boolean = false;
+		
+		private static var paused : Boolean = false;
 		
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
-			addEventListener(Event.ENTER_FRAME, onEnterFrame);
+			if (LOAD) {
+				addEventListener(Event.ENTER_FRAME, loadListener);
+				enterFrameListener = loadListener;
+			} else {
+				addEventListener(Event.ENTER_FRAME, generateListener);
+				enterFrameListener = generateListener;
+			}
+			addEventListener(Event.ENTER_FRAME, drawFPS);
 		}
 
+		private function onKeyUp(e : KeyboardEvent) : void {
+			trace("Pressed " + e.charCode);
+			if (e.charCode == 'r'.charCodeAt()) {
+				random = !random;
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				enterFrameListener = resetListener;
+				addEventListener(Event.ENTER_FRAME, resetListener);
+				return;
+			}
+			if (e.charCode == 'p'.charCodeAt()) {
+				if (paused) {
+					addEventListener(Event.ENTER_FRAME, enterFrameListener);
+				} else {
+					removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				}
+				paused = !paused;
+				return;
+			}
+			if (dataString == null || (e.charCode != 's'.charCodeAt() && e.charCode != 'S'.charCodeAt())) {
+				return;
+			}
+			var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
+			fileRef = new FileReference();
+			fileRef.save(dataString, fn);
+		}
+		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 
-			stage.addEventListener(KeyboardEvent.KEY_UP, function(e : KeyboardEvent) : void {
-				trace("Pressed " + e.charCode);
-				if (e.charCode == 'r'.charCodeAt()) {
-					reset = true;
-				}
-				if (dataString == null || (e.charCode != 's'.charCodeAt() && e.charCode != 'S'.charCodeAt())) {
-					return;
-				}
-				var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
-				fileRef = new FileReference();
-				fileRef.save(dataString, fn);
-			});
+			stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 			
 			for each (maskName in describeType(masks).variable.@name) {
 				if (maskName == "vector") {
@@ -291,163 +316,177 @@ package {
 			fileSize = e.bytesTotal;
 		}
 		
-		private function onEnterFrame(e : Event) : void {
-			if (LOAD && !loaded) {
-				bitmapData2.fillRect(bitmapData2.rect, 0x0);
-				if (loader == null) {
-					trace("loading file");
-					var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
-					loader = new URLLoader(u);
-					loader.addEventListener(Event.COMPLETE, onLoadComplete);
-					loader.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
-					loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
-				} else if (jsonDecoder != null) {
-					if (loadedDataObject == null && !jsonDecoder.done) {
-						//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
-						for (i = 0; i < 150000; ++i) {
-							if (jsonDecoder.loop()) {
-								trace(((getTimer() - jsonStartTime) / 1000).toFixed(4) + "s parsing JSON");
-								loadedDataObject = jsonDecoder.getValue();
-								break;
-							}
+		private function loadListener(e : Event) : void {
+			bitmapData2.fillRect(bitmapData2.rect, 0x0);
+			if (loader == null) {
+				trace("loading file");
+				var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
+				loader = new URLLoader(u);
+				loader.addEventListener(Event.COMPLETE, onLoadComplete);
+				loader.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
+				loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
+			} else if (jsonDecoder != null) {
+				if (loadedDataObject == null && !jsonDecoder.done) {
+					//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
+					for (i = 0; i < 150000; ++i) {
+						if (jsonDecoder.loop()) {
+							trace(((getTimer() - jsonStartTime) / 1000).toFixed(4) + "s parsing JSON");
+							loadedDataObject = jsonDecoder.getValue();
+							break;
 						}
-					} else if (cacheLoadIdx < cache.length) {
-						//trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
-						for (i = 0; i < 60000 && cacheLoadIdx < cache.length; ++i) {
-							cache[cacheLoadIdx] = loadedDataObject.cache[cacheLoadIdx];
-							++cacheLoadIdx;
-						}
-					} else if (stateLoadIdx < states.length) {
-						//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
-						for (i = 0; i < 60000 && stateLoadIdx < states.length; ++i) {
-							var ch : Chunk;
-							if (loadedDataObject.states[stateLoadIdx] == null) {
-								ch = null;
-							} else {
-								ch = new Chunk(loadedDataObject.states[stateLoadIdx]);
-							}
-							states[stateLoadIdx] = ch;
-							++stateLoadIdx;
-						}
-						loaded = stateLoadIdx == states.length;
 					}
-				}
-
-				drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
-				drawProgressBar(jsonDecoder != null ? jsonDecoder.tokenizer.loc : 0, jsonDecoder != null ? jsonDecoder.tokenizer.jsonString.length : 1, PROGRESS_Y + 22);
-				drawProgressBar(cacheLoadIdx, cache.length, PROGRESS_Y + 44);
-				drawProgressBar(stateLoadIdx, states.length, PROGRESS_Y + 66);
-				/*
-				graphics.beginBitmapFill(fpsbd);
-				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
-				graphics.endFill();
-				*/
-			} else if (!LOAD && cacheIdx < NUM_CACHE_PERMUTATIONS) {
-				bitmapData2.fillRect(bitmapData2.rect, 0x0);
-				var i : uint = 0;
-				while (i < CACHE_COMPUTATIONS_PER_FRAME && cacheIdx < NUM_CACHE_PERMUTATIONS) {
-					fillCache();
-					++i;
-				}
-				//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
-				bitmapData.setVector(cacheRect, currentStates);
-				//draw(c, cacheRect, cacheMat, 10, 10);
-				draw(nextStates, cacheRect2, cacheMat);
-				
-				if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
-					dataString = 
-						"{\n" +
-						'    "width": ' + CACHE_WIDTH + ",\n" +
-						'    "height": ' + CACHE_HEIGHT + ",\n" +
-						'    "cache": [' + cache + "],\n" +
-						'    "states": [' + states + "]\n" +
-						'}';
+				} else if (cacheLoadIdx < cache.length) {
+					//trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
+					cacheLoadIdx = cache.length;
+					cache = Vector.<uint>(loadedDataObject.cache);
 					/*
-					dataString = 
-						"{\n" +
-						'    width: ' + CACHE_WIDTH + ",\n" +
-						'    height: ' + CACHE_HEIGHT + ",\n" +
-						'    cache: [' + cache + "],\n" +
-						'    states: [' + states + "]\n" +
-						'}';
+					for (i = 0; i < 60000 && cacheLoadIdx < cache.length; ++i) {
+					cache[cacheLoadIdx] = loadedDataObject.cache[cacheLoadIdx];
+					++cacheLoadIdx;
+					}
 					*/
-					//trace(dataString);
-				}
-				/*
-				graphics.beginBitmapFill(fpsbd);
-				graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
-				graphics.endFill();
-				*/
-			} else if (reset) {
-				reset = false;
-				graphics.clear();
-				jsonDecoder = null;
-				trace("initing chunks");
-				currentStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
-				nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
-				if (false) {
-					for (var y : uint = 1; y < CHUNKED_HEIGHT - 1; ++y) {
-						var yo : uint = FULL_CHUNKED_WIDTH * y;
-						for (var x : uint = 1; x < CHUNKED_WIDTH - 1; ++x) {
-							currentStates[x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+				} else if (stateLoadIdx < states.length) {
+					//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
+					for (i = 0; i < 60000 && stateLoadIdx < states.length; ++i) {
+						var ch : Chunk;
+						if (loadedDataObject.states[stateLoadIdx] == null) {
+							ch = null;
+						} else {
+							ch = new Chunk(loadedDataObject.states[stateLoadIdx]);
 						}
+						states[stateLoadIdx] = ch;
+						++stateLoadIdx;
 					}
-				} else {
-					for (var y : uint = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
-						var yo : uint = FULL_CHUNKED_WIDTH * y;
-						for (var x : uint = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
-							currentStates[x + yo] = masks.inner;
-						}
-					}
+					loaded = stateLoadIdx == states.length;
 				}
-				currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-				for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
-					if ((i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1) {
-						++i;
-						continue;
-					}
-					currentChunksToCheck[i] = true;
-				}
-				/*
-				for (y = 0; y < F_CHUNKED_H; ++y) {
-					var s : String = "";
-					yo = F_CHUNKED_W * y;
-					for (x = 0; x < F_CHUNKED_W; ++x) {
-						s += bbv[0][x + yo] > 0 ? "1" : "0";
-					}
-					trace(s);
-				}
-				*/
-				if (bitmap == null) {
-					bitmap = new Bitmap(bitmapData);
-					bitmap.x = -CACHE_WIDTH;
-					bitmap.y = -CACHE_HEIGHT;
-					addChild(bitmap);
-					if (fpsBitmap.parent != null) {
-						fpsBitmap.parent.removeChild(fpsBitmap);
-					}
-					addChild(fpsBitmap);
-				}
-				drawChunked();
-				/** /
-				bd.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
-				bv[0] = bd.getVector(bd.rect);
-				bv[1] = new Vector.<uint>(W * H, true);
-				draw(bv[ci], bd.rect);
-				/**/
-				FPSCounter.reset();
-			} else {
-				drawChunked();
-			/*
-			} else {
-				nextFrame();
-				draw(bv[ci], bd.rect);
-			*/
 			}
-			drawFPS();
+			
+			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
+			drawProgressBar(jsonDecoder != null ? jsonDecoder.tokenizer.loc : 0, jsonDecoder != null ? jsonDecoder.tokenizer.jsonString.length : 1, PROGRESS_Y + 22);
+			drawProgressBar(cacheLoadIdx, cache.length, PROGRESS_Y + 44);
+			drawProgressBar(stateLoadIdx, states.length, PROGRESS_Y + 66);
+			/*
+			graphics.beginBitmapFill(fpsbd);
+			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
+			graphics.endFill();
+			*/
+			if (loaded) {
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				addEventListener(Event.ENTER_FRAME, resetListener);
+				enterFrameListener = resetListener;
+			}
 		}
 		
-		private function drawChunked() : void {
+		private function resetListener(e : Event) : void {
+			graphics.clear();
+			jsonDecoder = null;
+			trace("initing chunks");
+			currentStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
+			nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
+			var y : uint;
+			var yo : uint;
+			var x : uint;
+			if (random) {
+				for (y = 1; y < CHUNKED_HEIGHT - 1; ++y) {
+					yo = FULL_CHUNKED_WIDTH * y;
+					for (x = 1; x < CHUNKED_WIDTH - 1; ++x) {
+						currentStates[x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+					}
+				}
+			} else {
+				for (y = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
+					yo = FULL_CHUNKED_WIDTH * y;
+					for (x = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
+						currentStates[x + yo] = masks.inner;
+					}
+				}
+			}
+			currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+			for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+				if ((i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1) {
+					++i;
+					continue;
+				}
+				currentChunksToCheck[i] = true;
+			}
+			/*
+			for (y = 0; y < F_CHUNKED_H; ++y) {
+			var s : String = "";
+			yo = F_CHUNKED_W * y;
+			for (x = 0; x < F_CHUNKED_W; ++x) {
+			s += bbv[0][x + yo] > 0 ? "1" : "0";
+			}
+			trace(s);
+			}
+			*/
+			if (bitmap == null) {
+				bitmap = new Bitmap(bitmapData);
+				bitmap.x = -CACHE_WIDTH;
+				bitmap.y = -CACHE_HEIGHT;
+				addChild(bitmap);
+				if (fpsBitmap.parent != null) {
+					fpsBitmap.parent.removeChild(fpsBitmap);
+				}
+				addChild(fpsBitmap);
+			}
+			drawChunked();
+			/** /
+			 bd.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
+			 bv[0] = bd.getVector(bd.rect);
+			 bv[1] = new Vector.<uint>(W * H, true);
+			 draw(bv[ci], bd.rect);
+			/**/
+			FPSCounter.reset();
+			
+			removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+			addEventListener(Event.ENTER_FRAME, drawChunked);
+			enterFrameListener = drawChunked;
+		}
+		
+		private function renderNaive(e : Event) : void {
+			nextFrame();
+			draw(currentStates, bitmapData.rect);
+		}
+		
+		private function generateListener(e : Event) : void {
+			bitmapData2.fillRect(bitmapData2.rect, 0x0);
+			var i : uint = 0;
+			while (i < CACHE_COMPUTATIONS_PER_FRAME && cacheIdx < NUM_CACHE_PERMUTATIONS) {
+				fillCache();
+				++i;
+			}
+			//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
+			bitmapData.setVector(cacheRect, currentStates);
+			//draw(c, cacheRect, cacheMat, 10, 10);
+			draw(nextStates, cacheRect2, cacheMat);
+			
+			if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
+				dataString = 
+					"{\n" +
+					'    "width": ' + CACHE_WIDTH + ",\n" +
+					'    "height": ' + CACHE_HEIGHT + ",\n" +
+					'    "cache": [' + cache + "],\n" +
+					'    "states": [' + states + "]\n" +
+					'}';
+				/*
+				dataString = 
+					"{\n" +
+					'    width: ' + CACHE_WIDTH + ",\n" +
+					'    height: ' + CACHE_HEIGHT + ",\n" +
+					'    cache: [' + cache + "],\n" +
+					'    states: [' + states + "]\n" +
+					'}';
+				*/
+				//trace(dataString);
+			}
+			/*
+			graphics.beginBitmapFill(fpsbd);
+			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
+			graphics.endFill();
+			*/
+		}
+		
+		private function drawChunked(e : Event = null) : void {
 			/*
 			r.x = 0;
 			r.y = 0;
@@ -623,7 +662,7 @@ package {
 			graphics.endFill();
 		}
 		
-		private function drawFPS() : void {
+		private function drawFPS(e : Event = null) : void {
 			fpsBitmapData.lock();
 			fpsBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);
 			DText.draw(fpsBitmapData, FPSCounter.update(), fpsBitmapData.width - 1, 0, DText.RIGHT);
