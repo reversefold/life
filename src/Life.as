@@ -92,7 +92,7 @@ package {
 		private static var maskNeighborOffsetNegative : Chunk = new Chunk();
 		private static var maskNames : Vector.<String> = new Vector.<String>();
 		
-		private static var data : String = null;
+		private static var dataString : String = null;
 		private static var f : FileReference;
 		
 		private static var reset : Boolean = true;
@@ -104,8 +104,7 @@ package {
 		private static var innerVector : Vector.<uint>;
 		private static var d : JSONDecoderAsync = null;
 		private static var dataObj : Object = null;
-		//private static var dataObj : Object = LifeData.data3x3;
-		//private static var dataObj : Object = null;
+		//private static var dataObj : Object = LifeData.data2x2;
 		
 		private static var l : URLLoader = null;
 		private static var cacheLoadIdx : uint = 0;
@@ -139,12 +138,12 @@ package {
 				if (e.charCode == 'r'.charCodeAt()) {
 					reset = true;
 				}
-				if (data == null || (e.charCode != 's'.charCodeAt() && e.charCode != 'S'.charCodeAt())) {
+				if (dataString == null || (e.charCode != 's'.charCodeAt() && e.charCode != 'S'.charCodeAt())) {
 					return;
 				}
 				var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
 				f = new FileReference();
-				f.save(data, fn);
+				f.save(dataString, fn);
 			});
 			
 			for each (maskName in describeType(masks).variable.@name) {
@@ -399,14 +398,23 @@ package {
 				/**/
 				/**/
 				if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
-					data = 
+					dataString = 
 						"{\n" +
 						'    "width": ' + CACHE_WIDTH + ",\n" +
 						'    "height": ' + CACHE_HEIGHT + ",\n" +
 						'    "cache": [' + cache + "],\n" +
 						'    "states": [' + states + "]\n" +
 						'}';
-					trace(data);
+					/*
+					dataString = 
+						"{\n" +
+						'    width: ' + CACHE_WIDTH + ",\n" +
+						'    height: ' + CACHE_HEIGHT + ",\n" +
+						'    cache: [' + cache + "],\n" +
+						'    states: [' + states + "]\n" +
+						'}';
+					*/
+					trace(dataString);
 				}
 				/*
 				graphics.beginBitmapFill(fpsbd);

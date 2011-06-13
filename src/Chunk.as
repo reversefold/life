@@ -29,7 +29,12 @@ package {
 		public function toString() : String {
 			var v : Vector.<String> = new Vector.<String>();
 			for each (var n : String in describeType(this).variable.@name) {
-				v.push('"' + n + '": ' + (this[n] is Vector.<uint> ? "[" + this[n] + "]" : this[n]));
+				v.push(
+					'"' +
+					n +
+					'"' +
+					': ' +
+					(this[n] is Vector.<uint> ? "[" + this[n] + "]" : this[n]));
 			}
 			return "{" + v.join(",") + "}";
 		}
