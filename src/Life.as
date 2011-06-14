@@ -1,4 +1,5 @@
 package {
+	import com.foxaweb.utils.Raster;
 	import com.reversefold.json.JSON;
 	import com.reversefold.json.JSONDecoderAsync;
 	
@@ -29,13 +30,13 @@ package {
 	
 	[SWF(frameRate="100", width="1000", height="1000")]
 	public class Life extends Sprite {
-		private static const CACHE_WIDTH : uint = 2;
-		private static const CACHE_HEIGHT : uint = 2;
+		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_HEIGHT : uint = 3;
 		
 		private static const REQUESTED_WIDTH : uint = 1000;
 		private static const REQUESTED_HEIGHT : uint = 1000;
 		
-		private static const LOAD : Boolean = false;
+		private static const LOAD : Boolean = true;
 		
 		private static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
 		
@@ -66,7 +67,7 @@ package {
 
 		private static const PROGRESS_Y : uint = 300;
 		
-		private static var bitmapData : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		private static var bitmapData : Raster = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var bitmap : Bitmap = null;
 		private static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
@@ -154,14 +155,11 @@ package {
 				return;
 			}
 			if (e.charCode == 'p'.charCodeAt()) {
-				if (paused) {
-					addEventListener(Event.ENTER_FRAME, enterFrameListener);
-					addEventListener(Event.ENTER_FRAME, drawFPS);
-				} else {
-					removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-					removeEventListener(Event.ENTER_FRAME, drawFPS);
-				}
-				paused = !paused;
+				invertPause();
+				return;
+			}
+			if (e.charCode == 'f'.charCodeAt()) {
+				FPSCounter.reset();
 				return;
 			}
 			/*
@@ -182,6 +180,20 @@ package {
 			var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
 			fileRef = new FileReference();
 			fileRef.save(dataString, fn);
+		}
+		
+		private function invertPause(resetFPS : Boolean = false) : void {
+			if (paused) {
+				addEventListener(Event.ENTER_FRAME, enterFrameListener);
+				addEventListener(Event.ENTER_FRAME, drawFPS);
+			} else {
+				if (resetFPS) {
+					FPSCounter.reset();
+				}
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				removeEventListener(Event.ENTER_FRAME, drawFPS);
+			}
+			paused = !paused;
 		}
 		
 		private function onAddedToStage(e : Event) : void {
@@ -342,6 +354,7 @@ package {
 		
 		private function loadListener(e : Event) : void {
 			//bitmapData2.fillRect(bitmapData2.rect, 0x0);
+			bitmapData.fillRect(bitmapData.rect, 0);
 			if (loader == null) {
 				trace("loading file");
 				var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
@@ -467,11 +480,12 @@ package {
 			 bv[1] = new Vector.<uint>(W * H, true);
 			 draw(bv[ci], bd.rect);
 			/**/
-			FPSCounter.reset();
 			
 			removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 			addEventListener(Event.ENTER_FRAME, drawChunked);
 			enterFrameListener = drawChunked;
+			
+			invertPause(true);
 		}
 		
 		private function renderNaive(e : Event) : void {
@@ -540,6 +554,8 @@ package {
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				addEventListener(Event.ENTER_FRAME, resetListener);
 				enterFrameListener = resetListener;
+				
+				invertPause(true);
 			}
 			/*
 			graphics.beginBitmapFill(fpsbd);
@@ -711,13 +727,18 @@ package {
 		}
 		
 		private function drawProgressBar(cur : uint, tot : uint, y : uint) : void {
+			bitmapData.drawRect(new Rectangle(int(DISPLAY_WIDTH / 4), y, int(DISPLAY_WIDTH / 2), 20), ALIVE_PIXEL);
+			/*			
 			graphics.lineStyle(1, ALIVE_PIXEL);
 			graphics.drawRect(int(DISPLAY_WIDTH / 4), y, int(DISPLAY_WIDTH / 2), 20);
 			graphics.lineStyle();
+			*/
+			bitmapData.fillRect(new Rectangle(int(DISPLAY_WIDTH / 4 + 2), y + 2, int(DISPLAY_WIDTH / 2 - 3) * cur / tot, 17), ALIVE_PIXEL);
+			/*
 			graphics.beginFill(ALIVE_PIXEL);
 			graphics.drawRect(int(DISPLAY_WIDTH / 4 + 2), y + 2, int(DISPLAY_WIDTH / 2 - 3) * cur / tot, 17);
 			graphics.endFill();
-			
+			*/
 			DText.draw(bitmapData, Number(cur * 100 / tot).toFixed(1) + "%", int(DISPLAY_WIDTH / 2), y + 3, DText.CENTER);
 			/*
 			graphics.beginBitmapFill(bitmapData2);
