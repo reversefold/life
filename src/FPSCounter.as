@@ -2,7 +2,7 @@ package {
     import flash.utils.getTimer;
 
     public class FPSCounter {
-        private static var last : uint;
+        private static var last : uint = 0;
         private static var ticks : uint;
         private static var text : String;
 		private static var min : Number;
@@ -14,7 +14,7 @@ package {
 		}
 
 		public static function reset() : void {
-			last = getTimer();
+			last = 0;
 			ticks = 0;
 			text = "--.- FPS\n--.- min\n--.- max";
 			min = Number.MAX_VALUE;
@@ -24,6 +24,10 @@ package {
         public static function update() : String {
             ++ticks;
             var now : uint = getTimer();
+			if (last == 0) {
+				last = now;
+				return text;
+			}
             var delta : uint = now - last;
             if (delta >= 1000) {
                 var fps : Number = ticks / delta * 1000;
