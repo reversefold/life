@@ -49,7 +49,7 @@ package {
                 if (c > 160 || c < 32) {
                     c = DEFAULT_CHAR;
                 }
-                buffer.copyPixels(chars.bitmapData, CHAR_RECTS[c], p);
+                buffer.copyPixels(chars.bitmapData, CHAR_RECTS[c], p, null, null, true);
                 p.x += 8;
             }
         }
