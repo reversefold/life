@@ -1,9 +1,12 @@
 package {
+	import flash.display.BitmapData;
 	import flash.utils.ByteArray;
 	import flash.utils.describeType;
 	
 	public class Chunk extends Object {
-		public function Chunk(o : Object = null) {
+		public function Chunk(w : uint, h : uint, o : Object = null) {
+			this.w = w;
+			this.h = h;
 			if (o == null) {
 				return;
 			}
@@ -15,6 +18,8 @@ package {
 				}
 			}
 		}
+		private var w : uint;
+		private var h : uint;
 		
 		public var inner : uint;
 		public var top : uint;
@@ -26,6 +31,12 @@ package {
 		public var bottomRight : uint;
 		public var bottomLeft : uint;
 		public var vector : Vector.<uint>;
+		public var bitmapData : BitmapData;
+		public function setVector(inVector : Vector.<uint>) : void {
+			vector = inVector;
+			bitmapData = new BitmapData(w, h);
+			bitmapData.setVector(bitmapData.rect, vector);
+		}
 		
 		public function toString() : String {
 			var v : Vector.<String> = new Vector.<String>();
@@ -56,8 +67,8 @@ package {
 			}
 		}
 		
-		public static function read(ba : ByteArray) : Chunk {
-			var c : Chunk = new Chunk();
+		public static function read(ba : ByteArray, w : uint, h : uint) : Chunk {
+			var c : Chunk = new Chunk(w, h);
 			c.inner = ba.readUnsignedInt();
 			c.top = ba.readUnsignedInt();
 			c.bottom = ba.readUnsignedInt();
@@ -67,10 +78,11 @@ package {
 			c.topLeft = ba.readUnsignedInt();
 			c.bottomRight = ba.readUnsignedInt();
 			c.bottomLeft = ba.readUnsignedInt();
-			c.vector = new Vector.<uint>(ba.readUnsignedInt(), true);
-			for (var i : uint = 0; i < c.vector.length; ++i) {
-				c.vector[i] = ba.readUnsignedInt();
+			var v : Vector.<uint> = new Vector.<uint>(ba.readUnsignedInt(), true);
+			for (var i : uint = 0; i < v.length; ++i) {
+				v[i] = ba.readUnsignedInt();
 			}
+			c.setVector(v);
 			return c;
 		}
 	}

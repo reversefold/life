@@ -18,6 +18,7 @@ package {
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
+	import flash.net.FileFilter;
 	import flash.net.FileReference;
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
@@ -30,13 +31,20 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	[SWF(frameRate="100", width="1000", height="1000")]
+	//[SWF(frameRate="100", width="1920", height="1000")]
+	//[SWF(frameRate="100", width="1000", height="1000")]
+	//[SWF(frameRate="100", width="2560", height="1500")]
+	[SWF(frameRate="100", width="1000", height="700")]
 	public class Life extends Sprite {
-		private static const CACHE_WIDTH : uint = 4;
-		private static const CACHE_HEIGHT : uint = 3;
+		private static const CACHE_WIDTH : uint = 1;
+		private static const CACHE_HEIGHT : uint = 1;
 		
+		/*
+		private static const REQUESTED_WIDTH : uint = 2560;
+		private static const REQUESTED_HEIGHT : uint = 1500;
+		*/
 		private static const REQUESTED_WIDTH : uint = 1000;
-		private static const REQUESTED_HEIGHT : uint = 1000;
+		private static const REQUESTED_HEIGHT : uint = 700;
 		
 		private static const LOAD : Boolean = false;
 		private static const LOAD_JSON : Boolean = false;
@@ -71,7 +79,7 @@ package {
 		private static const PROGRESS_Y : uint = 300;
 		
 		private static var bitmapData : Raster = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
-		private static var bitmap : Bitmap = null;
+		private static var bitmap : Bitmap = new Bitmap(bitmapData);
 		private static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
 		private static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
@@ -95,12 +103,13 @@ package {
 		
 		private static var cacheRect : Rectangle = new Rectangle(1, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
 		private static var cacheRect2 : Rectangle = new Rectangle(FULL_CACHE_WIDTH + 4, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		private static var chunkRect : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
 		private static var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
 		
-		private static var masks : Chunk = new Chunk();
-		private static var maskOffsets : Chunk = new Chunk();
-		private static var maskNeighborOffsets : Chunk = new Chunk();
-		private static var maskNeighborOffsetNegative : Chunk = new Chunk();
+		private static var masks : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+		private static var maskOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+		private static var maskNeighborOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+		private static var maskNeighborOffsetNegative : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
 		private static var maskNames : Vector.<String> = new Vector.<String>();
 		
 		private static var dataString : String = null;
@@ -126,12 +135,14 @@ package {
 		private static var loadStartTime : * = null;
 		private static var generateStartTime : * = null;
 		
-		private static var chunkRect : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
 		private static var i : uint;
 		private static var upIdx : uint;
 		private static var downIdx : uint;
 		private static var currentState : Chunk;
 		private static var nextState : Chunk;
+		private static var point : Point = new Point();
+		
+		private static var loadFile : FileReference;
 		
 		private static var enterFrameListener : Function;
 		
@@ -164,13 +175,21 @@ package {
 				enterFrameListener = resetListener;
 				addEventListener(Event.ENTER_FRAME, resetListener);
 				return;
-			}
-			if (e.charCode == 'p'.charCodeAt()) {
+			} else if (e.charCode == 'p'.charCodeAt()) {
 				invertPause();
 				return;
-			}
-			if (e.charCode == 'f'.charCodeAt()) {
+			} else if (e.charCode == 'f'.charCodeAt()) {
 				FPSCounter.reset();
+				return;
+			} else if (e.charCode == 'l'.charCodeAt()) {
+				loadFile = new FileReference();
+				loadFile.addEventListener(Event.SELECT, onLoadFileSelect);
+				loadFile.browse([new FileFilter("RLE File", "rle")]);
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				enterFrameListener = null;
+				return;
+			} else if (e.charCode == 'n'.charCodeAt()) {
+				drawChunkedAndNext();
 				return;
 			}
 			/*
@@ -181,8 +200,8 @@ package {
 			}
 			if (e.charCode == 'c'.charCodeAt()) {
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-				addEventListener(Event.ENTER_FRAME, drawChunked);
-				enterFrameListener = drawChunked;
+				addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
+				enterFrameListener = drawChunkedAndNext;
 			}
 			*/
 			if (e.charCode != 's'.charCodeAt()) {
@@ -214,6 +233,95 @@ package {
 			fileRef.save(ba, fn);
 		}
 		
+		private function onLoadFileSelect(e : Event) : void {
+			loadFile.addEventListener(ProgressEvent.PROGRESS, onProgress);
+			loadFile.addEventListener(Event.COMPLETE, onLoadRLEComplete);
+			loadFile.load();
+		}
+		
+		private function onLoadRLEComplete(e : Event) : void {
+			var str : String = loadFile.data.toString();
+			var i : uint = 0;
+			var lines : Vector.<String> = Vector.<String>(str.split("\n"));
+			while (lines[i].charAt(0) == "#") {
+				lines.shift();
+			}
+			var line : String = lines.shift().replace(/\s/, "");
+			var parts : Vector.<String> = Vector.<String>(line.split(","));
+			var width : uint;
+			var height : uint;
+			for each (var part : String in parts) {
+				var bits : Vector.<String> = Vector.<String>(part.split("="));
+				if (bits[0] == "x") {
+					width = uint(bits[1]);
+				} else {
+					height = uint(bits[1]);
+				}
+			}
+			str = lines.join("");
+			var numStr : String = "";
+			var num : uint = 1;
+			for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+				if ((i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1) {
+					++i;
+					continue;
+				}
+				currentStates[i] = nextStates[i] = 0x0;
+				nextChunksToCheck[i] = currentChunksToCheck[i] = true;
+			}
+			var x : uint = 0;
+			var y : uint = 0;
+			for (i = 0; i < str.length; ++i) {
+				var char : String = str.charAt(i);
+				if (char.charCodeAt() >= '0'.charCodeAt() && char.charCodeAt() <= '9'.charCodeAt()) {
+					numStr += char;
+				} else {
+					if (numStr.length > 0) {
+						num = uint(numStr);
+						numStr = "";
+					} else {
+						num = 1;
+					}
+					var pixels : String = "";
+					if (char != "$" && (char.charCodeAt() < '0'.charCodeAt() || char.charCodeAt() > '9'.charCodeAt())) {
+						pixels += char;
+						++i;
+						char = str.charAt(i);
+					}
+					for (var j : uint = 0; j < num; ++j) {
+						for (var ci : uint = 0; ci < pixels.length; ++ci) {
+							if (pixels.charAt(ci) == "b") {
+								++x;
+								continue;
+							}
+							var idx : uint = x
+								+ int(FULL_CHUNKED_WIDTH / 2 - width / 2)
+								+ (y
+									+ int(FULL_CHUNKED_HEIGHT / 2 - height / 2)
+								  ) * FULL_CHUNKED_WIDTH;
+							nextStates[idx] = currentStates[idx] = masks.inner;
+							//nextChunksToCheck[idx] = currentChunksToCheck[idx] = true;
+							++x;
+						}
+					}
+					if (char == "$") {
+						++y;
+						x = 0;
+					} else if (char == "!") {
+						break;
+					} else {
+						--i;
+					}
+				}
+			}
+			addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
+			enterFrameListener = drawChunkedAndNext;
+			drawChunked();
+			
+			paused = false;
+			invertPause(true);
+		}
+		
 		private function invertPause(resetFPS : Boolean = false) : void {
 			if (paused) {
 				addEventListener(Event.ENTER_FRAME, enterFrameListener);
@@ -235,7 +343,7 @@ package {
 			stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 			
 			for each (maskName in describeType(masks).variable.@name) {
-				if (maskName == "vector") {
+				if (maskName == "vector" || maskName == "bitmapData") {
 					continue;
 				}
 				maskNames.push(maskName);
@@ -283,7 +391,6 @@ package {
 			}
 			*/
 
-			bitmap = new Bitmap(bitmapData);
 			bitmap.x = -CACHE_WIDTH;
 			bitmap.y = -CACHE_HEIGHT;
 			addChild(bitmap);
@@ -373,8 +480,8 @@ package {
 						++i;
 					}
 				}
-				state = new Chunk();
-				state.vector = innerVector;
+				state = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+				state.setVector(innerVector);
 				for each (maskName in maskNames) {
 					state[maskName] = (masks[maskName] & full); // & inner would be the same since the masks are all for the inner rect
 					//precalculate moving this masked bit to the place it needs to be for neighbor use
@@ -451,7 +558,7 @@ package {
 					if (stateLoadIdx < states.length) {
 						for (i = 0; i < 120000 && stateLoadIdx < states.length; ++i) {
 							if (binaryData.readBoolean()) {
-								states[binaryData.readUnsignedInt()] = Chunk.read(binaryData);
+								states[binaryData.readUnsignedInt()] = Chunk.read(binaryData, CACHE_WIDTH, CACHE_HEIGHT);
 							}
 							++stateLoadIdx;
 						}
@@ -561,7 +668,7 @@ package {
 						if (loadedDataObject.states[stateLoadIdx] == null) {
 							ch = null;
 						} else {
-							ch = new Chunk(loadedDataObject.states[stateLoadIdx]);
+							ch = new Chunk(CACHE_WIDTH, CACHE_HEIGHT, loadedDataObject.states[stateLoadIdx]);
 						}
 						states[stateLoadIdx] = ch;
 						++stateLoadIdx;
@@ -627,39 +734,27 @@ package {
 			}
 			/*
 			for (y = 0; y < F_CHUNKED_H; ++y) {
-			var s : String = "";
-			yo = F_CHUNKED_W * y;
-			for (x = 0; x < F_CHUNKED_W; ++x) {
-			s += bbv[0][x + yo] > 0 ? "1" : "0";
-			}
-			trace(s);
-			}
-			*/
-			/*
-			if (bitmap == null) {
-				bitmap = new Bitmap(bitmapData);
-				bitmap.x = -CACHE_WIDTH;
-				bitmap.y = -CACHE_HEIGHT;
-				addChild(bitmap);
-				if (fpsBitmap.parent != null) {
-					fpsBitmap.parent.removeChild(fpsBitmap);
+				var s : String = "";
+				yo = F_CHUNKED_W * y;
+				for (x = 0; x < F_CHUNKED_W; ++x) {
+					s += bbv[0][x + yo] > 0 ? "1" : "0";
 				}
-				addChild(fpsBitmap);
+				trace(s);
 			}
 			*/
 			drawChunked();
 			/** /
-			 bd.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
-			 bv[0] = bd.getVector(bd.rect);
-			 bv[1] = new Vector.<uint>(W * H, true);
-			 draw(bv[ci], bd.rect);
+			bitmapData.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
+			bv[0] = bitmapData.getVector(bitmapData.rect);
+			bv[1] = new Vector.<uint>(W * H, true);
+			draw(bv[ci], bitmapData.rect);
 			/**/
 			
 			removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-			addEventListener(Event.ENTER_FRAME, drawChunked);
-			enterFrameListener = drawChunked;
+			addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
+			enterFrameListener = drawChunkedAndNext;
 			
-			invertPause(true);
+			invertPause();
 		}
 		
 		private function renderNaive(e : Event) : void {
@@ -730,8 +825,6 @@ package {
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				addEventListener(Event.ENTER_FRAME, resetListener);
 				enterFrameListener = resetListener;
-				
-				invertPause(true);
 			}
 			/*
 			graphics.beginBitmapFill(fpsbd);
@@ -740,7 +833,30 @@ package {
 			*/
 		}
 		
-		private function drawChunked(e : Event = null) : void {
+		private function drawChunked() : void {
+			bitmapData.lock();
+			for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+				if (
+					//checks for the last index in a row, which is always dead
+					(i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1
+				) {
+					//skips the first index in a row as well, which is also always deadf
+					++i;
+					continue;
+				}
+				//chunkRect.x
+				point.x
+					= i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
+				//chunkRect.y
+				point.y
+					= int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
+				//bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
+				bitmapData.copyPixels(states[currentStates[i]].bitmapData, chunkRect, point);
+			}
+			bitmapData.unlock();
+		}
+		
+		private function drawChunkedAndNext(e : Event = null) : void {
 			/*
 			r.x = 0;
 			r.y = 0;
@@ -764,20 +880,25 @@ package {
 				downIdx = i + FULL_CHUNKED_WIDTH;
 				nextStates[i] = cache[
 					currentStates[i]
-					+ states[currentStates[upIdx]].bottom
-					+ states[currentStates[downIdx]].top
-					+ states[currentStates[i - 1]].right
-					+ states[currentStates[i + 1]].left
+					| states[currentStates[upIdx]].bottom
+					| states[currentStates[downIdx]].top
+					| states[currentStates[i - 1]].right
+					| states[currentStates[i + 1]].left
 					
-					+ states[currentStates[upIdx - 1]].bottomRight
-					+ states[currentStates[upIdx + 1]].bottomLeft
-					+ states[currentStates[downIdx - 1]].topRight
-					+ states[currentStates[downIdx + 1]].topLeft
+					| states[currentStates[upIdx - 1]].bottomRight
+					| states[currentStates[upIdx + 1]].bottomLeft
+					| states[currentStates[downIdx - 1]].topRight
+					| states[currentStates[downIdx + 1]].topLeft
 				];
 				if (currentStates[i] ^ nextStates[i]) {
-					chunkRect.x = i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
-					chunkRect.y = int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
-					bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
+					//chunkRect.x
+					point.x
+						= i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
+					//chunkRect.y
+					point.y
+						= int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
+					//bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
+					bitmapData.copyPixels(states[nextStates[i]].bitmapData, chunkRect, point);
 
 					currentState = states[currentStates[i]];
 					nextState = states[nextStates[i]];
