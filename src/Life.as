@@ -20,8 +20,10 @@ package {
 	import flash.geom.Rectangle;
 	import flash.net.FileReference;
 	import flash.net.URLLoader;
+	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
 	import flash.sampler.NewObjectSample;
+	import flash.utils.ByteArray;
 	import flash.utils.Dictionary;
 	import flash.utils.describeType;
 	import flash.utils.getTimer;
@@ -30,13 +32,14 @@ package {
 	
 	[SWF(frameRate="100", width="1000", height="1000")]
 	public class Life extends Sprite {
-		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_WIDTH : uint = 4;
 		private static const CACHE_HEIGHT : uint = 3;
 		
 		private static const REQUESTED_WIDTH : uint = 1000;
 		private static const REQUESTED_HEIGHT : uint = 1000;
 		
-		private static const LOAD : Boolean = true;
+		private static const LOAD : Boolean = false;
+		private static const LOAD_JSON : Boolean = false;
 		
 		private static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
 		
@@ -120,6 +123,9 @@ package {
 		private static var fileSize : uint = 1;
 		
 		private static var jsonStartTime : * = null;
+		private static var loadStartTime : * = null;
+		private static var generateStartTime : * = null;
+		
 		private static var chunkRect : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
 		private static var i : uint;
 		private static var upIdx : uint;
@@ -136,8 +142,13 @@ package {
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
 			if (LOAD) {
-				addEventListener(Event.ENTER_FRAME, loadListener);
-				enterFrameListener = loadListener;
+				if (LOAD_JSON) {
+					addEventListener(Event.ENTER_FRAME, loadListener);
+					enterFrameListener = loadListener;
+				} else {
+					addEventListener(Event.ENTER_FRAME, loadBinaryListener);
+					enterFrameListener = loadBinaryListener;
+				}
 			} else {
 				addEventListener(Event.ENTER_FRAME, generateListener);
 				enterFrameListener = generateListener;
@@ -174,12 +185,33 @@ package {
 				enterFrameListener = drawChunked;
 			}
 			*/
-			if (dataString == null || (e.charCode != 's'.charCodeAt())) {
+			if (e.charCode != 's'.charCodeAt()) {
 				return;
 			}
-			var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json";
+			var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT
+				//+ ".json";
+				+ ".bin";
+			var ba : ByteArray = new ByteArray();
+			ba.writeUnsignedInt(CACHE_WIDTH);
+			ba.writeUnsignedInt(CACHE_HEIGHT);
+			ba.writeUnsignedInt(cache.length);
+			for (var i : uint = 0; i < cache.length; ++i) {
+				ba.writeUnsignedInt(cache[i]);
+			}
+			ba.writeUnsignedInt(states.length);
+			for (i = 0; i < states.length; ++i) {
+				if (states[i] == null) {
+					ba.writeBoolean(false);
+				} else {
+					ba.writeBoolean(true);
+					ba.writeUnsignedInt(i);
+					states[i].write(ba);
+				}
+			}
+			
 			fileRef = new FileReference();
-			fileRef.save(dataString, fn);
+			//fileRef.save(dataString, fn);
+			fileRef.save(ba, fn);
 		}
 		
 		private function invertPause(resetFPS : Boolean = false) : void {
@@ -308,10 +340,32 @@ package {
 			uintToVec(cacheIdx, currentStates);
 			nextFromPrev(currentStates, nextStates, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
 			full = vecToUint(nextStates);
+			
+			if (cacheIdx > 1000000) {
+			var topFlip : uint = 0;
+			var ROW_MASK : uint = 0;
+			for (i = 0; i < FULL_CACHE_WIDTH; ++i) {
+				ROW_MASK |= 1 << i;
+			}
+			trace("cacheIdx");
+			_traceMask(cacheIdx);
+			var i : uint;
+			for (i = 0; i < CACHE_VECTOR_LENGTH; i += FULL_CACHE_WIDTH) {
+				var flipBits : int = (CACHE_VECTOR_LENGTH - 2 * i - FULL_CACHE_WIDTH);
+				if (flipBits >= 0) {
+					topFlip |= (cacheIdx & (ROW_MASK << i)) << flipBits;
+				} else {
+					topFlip |= (cacheIdx & (ROW_MASK << i)) >> -flipBits;
+				}
+			}
+			trace("topFlip");
+			_traceMask(topFlip);
+			}
+			
 			inner = full & masks.inner;
 			if (states[inner] == null) {
 				innerVector = new Vector.<uint>(INNER_CACHE_VECTOR_LENGTH, true);
-				var i : uint = 0;
+				i = 0;
 				for (var y : uint = 1; y <= CACHE_HEIGHT; ++y) {
 					var yo : uint = y * FULL_CACHE_WIDTH;
 					for (var x : uint = 1; x <= CACHE_WIDTH; ++x) {
@@ -352,10 +406,128 @@ package {
 			fileSize = e.bytesTotal;
 		}
 		
+		private static var binaryData : ByteArray;
+		private function onBinaryLoadComplete(e : Event) : void {
+			trace("file loaded");
+			binaryData = e.target.data;
+			
+			//jsonDecoder = new JSONDecoderAsync(e.target.data, true);
+			//jsonStartTime = getTimer();
+			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
+		}
+
+		private function loadBinaryListener(e : Event) : void {
+			//bitmapData2.fillRect(bitmapData2.rect, 0x0);
+			bitmapData.fillRect(bitmapData.rect, 0);
+			if (loader == null) {
+				loadStartTime = getTimer();
+				trace("loading file");
+				var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
+				loader = new URLLoader(u);
+				loader.dataFormat = URLLoaderDataFormat.BINARY;
+				loader.addEventListener(Event.COMPLETE, onBinaryLoadComplete);
+				loader.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
+				loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
+			} else if (binaryData != null) {
+				if (cacheLoadIdx == 0) {
+					binaryData.readUnsignedInt();//CACHE_WIDTH
+					binaryData.readUnsignedInt();//CACHE_HEIGHT
+					cache = new Vector.<uint>(binaryData.readUnsignedInt(), true);
+				}
+				if (cacheLoadIdx < cache.length) {
+					for (i = 0; i < 120000 && cacheLoadIdx < cache.length; ++i) {
+						cache[cacheLoadIdx] = binaryData.readUnsignedInt();
+						++cacheLoadIdx;
+					}
+					/*
+					for (var i : uint = 0; i < cache.length; ++i) {
+						cache[i] = binaryData.readUnsignedInt();
+					}
+					*/
+				} else {
+					if (stateLoadIdx == 0) {
+						states = new Vector.<Chunk>(binaryData.readUnsignedInt(), true);
+					}
+					if (stateLoadIdx < states.length) {
+						for (i = 0; i < 120000 && stateLoadIdx < states.length; ++i) {
+							if (binaryData.readBoolean()) {
+								states[binaryData.readUnsignedInt()] = Chunk.read(binaryData);
+							}
+							++stateLoadIdx;
+						}
+					} else {
+						loaded = true;
+					}
+				}
+				/*
+				for (i = 0; i < states.length; ++i) {
+					if (binaryData.readBoolean()) {
+						states[binaryData.readUnsignedInt()] = Chunk.read(binaryData);
+					}
+				}
+				
+				loaded = true;
+				*/
+
+				/*
+				if (loadedDataObject == null && !jsonDecoder.done) {
+					//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
+					for (i = 0; i < 150000; ++i) {
+						if (jsonDecoder.loop()) {
+							trace(((getTimer() - jsonStartTime) / 1000).toFixed(4) + "s parsing JSON");
+							loadedDataObject = jsonDecoder.getValue();
+							break;
+						}
+					}
+				} else if (cacheLoadIdx < cache.length) {
+					//trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
+					cacheLoadIdx = cache.length;
+					cache = Vector.<uint>(loadedDataObject.cache);
+					/** /
+					for (i = 0; i < 60000 && cacheLoadIdx < cache.length; ++i) {
+						cache[cacheLoadIdx] = loadedDataObject.cache[cacheLoadIdx];
+						++cacheLoadIdx;
+					}
+					/** /
+				} else if (stateLoadIdx < states.length) {
+					//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
+					for (i = 0; i < 60000 && stateLoadIdx < states.length; ++i) {
+						var ch : Chunk;
+						if (loadedDataObject.states[stateLoadIdx] == null) {
+							ch = null;
+						} else {
+							ch = new Chunk(loadedDataObject.states[stateLoadIdx]);
+						}
+						states[stateLoadIdx] = ch;
+						++stateLoadIdx;
+					}
+					loaded = stateLoadIdx == states.length;
+				}
+				*/
+			}
+			
+			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
+			drawProgressBar(cacheLoadIdx, cache.length, PROGRESS_Y + 22);
+			drawProgressBar(stateLoadIdx, states.length, PROGRESS_Y + 44);
+			/*
+			graphics.beginBitmapFill(fpsbd);
+			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
+			graphics.endFill();
+			*/
+			if (loaded) {
+				trace("Loading time: " + ((getTimer() - loadStartTime) / 1000).toFixed(2) + "s");
+				
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				addEventListener(Event.ENTER_FRAME, resetListener);
+				enterFrameListener = resetListener;
+			}
+		}
+		
 		private function loadListener(e : Event) : void {
 			//bitmapData2.fillRect(bitmapData2.rect, 0x0);
 			bitmapData.fillRect(bitmapData.rect, 0);
 			if (loader == null) {
+				loadStartTime = getTimer();
 				trace("loading file");
 				var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".json");
 				loader = new URLLoader(u);
@@ -408,6 +580,8 @@ package {
 			graphics.endFill();
 			*/
 			if (loaded) {
+				trace("Loading time: " + ((getTimer() - loadStartTime) / 1000).toFixed(2) + "s");
+				
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				addEventListener(Event.ENTER_FRAME, resetListener);
 				enterFrameListener = resetListener;
@@ -495,6 +669,7 @@ package {
 		
 		private function generateListener(e : Event) : void {
 			if (preBitmap.parent == null) {
+				generateStartTime = getTimer();
 				preBitmap.x = 10;
 				postBitmap.x = 40 + FULL_CACHE_WIDTH * 10;
 				preBitmap.y = postBitmap.y = 10;
@@ -533,6 +708,7 @@ package {
 			*/
 
 			if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
+				trace("Generation time: " + Number((getTimer() - generateStartTime) / 1000).toFixed(2) + "s");
 				dataString = 
 					"{\n" +
 					'    "width": ' + CACHE_WIDTH + ",\n" +
@@ -584,9 +760,6 @@ package {
 					continue;
 				}
 
-				chunkRect.x = i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
-				chunkRect.y = int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
-				bitmapData.setVector(chunkRect, states[currentStates[i]].vector);
 				upIdx = i - FULL_CHUNKED_WIDTH;
 				downIdx = i + FULL_CHUNKED_WIDTH;
 				nextStates[i] = cache[
@@ -602,6 +775,10 @@ package {
 					+ states[currentStates[downIdx + 1]].topLeft
 				];
 				if (currentStates[i] ^ nextStates[i]) {
+					chunkRect.x = i % FULL_CHUNKED_WIDTH * CACHE_WIDTH;
+					chunkRect.y = int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
+					bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
+
 					currentState = states[currentStates[i]];
 					nextState = states[nextStates[i]];
 					nextChunksToCheck[i] = true;
