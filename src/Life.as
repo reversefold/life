@@ -34,19 +34,17 @@ package {
 	//[SWF(frameRate="100", width="1920", height="1000")]
 	//[SWF(frameRate="100", width="1000", height="1000")]
 	//[SWF(frameRate="100", width="2560", height="1500")]
-	[SWF(frameRate="100", width="1000", height="700")]
+	[SWF(frameRate="1000")]//, width="1000", height="700"
 	public class Life extends Sprite {
-		private static const CACHE_WIDTH : uint = 1;
-		private static const CACHE_HEIGHT : uint = 1;
+		private static const CACHE_WIDTH : uint = 3;
+		private static const CACHE_HEIGHT : uint = 3;
 		
 		/*
 		private static const REQUESTED_WIDTH : uint = 2560;
 		private static const REQUESTED_HEIGHT : uint = 1500;
 		*/
-		private static const REQUESTED_WIDTH : uint = 1000;
-		private static const REQUESTED_HEIGHT : uint = 700;
 		
-		private static const LOAD : Boolean = false;
+		private static const LOAD : Boolean = true;
 		private static const LOAD_JSON : Boolean = false;
 		
 		private static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
@@ -60,27 +58,9 @@ package {
 		private static const CACHE_VECTOR_LENGTH : uint = FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT;
 		private static const INNER_CACHE_VECTOR_LENGTH : uint = CACHE_WIDTH * CACHE_HEIGHT;
 		private static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
-		
-		private static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
-		private static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
-
-		private static const CHUNKED_WIDTH : uint = DISPLAY_WIDTH / CACHE_WIDTH;
-		private static const CHUNKED_HEIGHT : uint = DISPLAY_HEIGHT / CACHE_HEIGHT;
-		
-		private static const FULL_CHUNKED_WIDTH : uint = CHUNKED_WIDTH + 2;
-		private static const FULL_CHUNKED_HEIGHT : uint = CHUNKED_HEIGHT + 2;
-		
-		private static const FULL_CHUNKED_LENGTH : uint = FULL_CHUNKED_WIDTH * FULL_CHUNKED_HEIGHT;
-		private static const FULL_CHUNKED_LIVE_LENGTH : uint = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH;
-		
-		private static const FULL_DISPLAY_WIDTH : uint = DISPLAY_WIDTH + CACHE_WIDTH * 2;
-		private static const FULL_DISPLAY_HEIGHT : uint = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
 
 		private static const PROGRESS_Y : uint = 300;
 		
-		private static var bitmapData : Raster = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
-		private static var bitmap : Bitmap = new Bitmap(bitmapData);
-		private static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		private static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
 		private static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
 		
@@ -92,8 +72,6 @@ package {
 		private static var nextStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
 		private static var tmpStates : Vector.<uint>;
 		
-		private static var currentChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-		private static var nextChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 		private static var tempChunksToCheck : Vector.<Boolean>;
 		
 		private static const preBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
@@ -150,6 +128,63 @@ package {
 		
 		private static var paused : Boolean = false;
 		
+		
+		
+		/*
+		 * This set of vars changes when the width/height change
+		 */
+		/* Original fixed values
+		private static const REQUESTED_WIDTH : uint = 1000;
+		private static const REQUESTED_HEIGHT : uint = 700;
+		
+		private static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
+		private static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
+		
+		private static const CHUNKED_WIDTH : uint = DISPLAY_WIDTH / CACHE_WIDTH;
+		private static const CHUNKED_HEIGHT : uint = DISPLAY_HEIGHT / CACHE_HEIGHT;
+		
+		private static const FULL_CHUNKED_WIDTH : uint = CHUNKED_WIDTH + 2;
+		private static const FULL_CHUNKED_HEIGHT : uint = CHUNKED_HEIGHT + 2;
+		
+		private static const FULL_CHUNKED_LENGTH : uint = FULL_CHUNKED_WIDTH * FULL_CHUNKED_HEIGHT;
+		private static const FULL_CHUNKED_LIVE_LENGTH : uint = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH;
+		
+		private static const FULL_DISPLAY_WIDTH : uint = DISPLAY_WIDTH + CACHE_WIDTH * 2;
+		private static const FULL_DISPLAY_HEIGHT : uint = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
+		
+		private static var bitmapData : Raster = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		private static var bitmap : Bitmap = new Bitmap(bitmapData);
+		private static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		
+		private static var currentChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+		private static var nextChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+		*/
+		private static var REQUESTED_WIDTH : uint;
+		private static var REQUESTED_HEIGHT : uint;
+		
+		private static var DISPLAY_WIDTH : uint;
+		private static var DISPLAY_HEIGHT : uint;
+		
+		private static var CHUNKED_WIDTH : uint;
+		private static var CHUNKED_HEIGHT : uint;
+		
+		private static var FULL_CHUNKED_WIDTH : uint;
+		private static var FULL_CHUNKED_HEIGHT : uint;
+		
+		private static var FULL_CHUNKED_LENGTH : uint;
+		private static var FULL_CHUNKED_LIVE_LENGTH : uint;
+		
+		private static var FULL_DISPLAY_WIDTH : uint;
+		private static var FULL_DISPLAY_HEIGHT : uint;
+		
+		private static var bitmapData : Raster;
+		private static var bitmap : Bitmap;
+		private static var bitmapData2 : BitmapData;
+		
+		private static var currentChunksToCheck : Vector.<Boolean>;
+		private static var nextChunksToCheck : Vector.<Boolean>;
+
+
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
 			if (LOAD) {
@@ -335,12 +370,63 @@ package {
 			}
 			paused = !paused;
 		}
+
+		
+		private function reset(e : Event = null) : void {
+			REQUESTED_WIDTH = stage.stageWidth;
+			REQUESTED_HEIGHT = stage.stageHeight;
+			
+			DISPLAY_WIDTH = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
+			DISPLAY_HEIGHT = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
+			
+			CHUNKED_WIDTH = DISPLAY_WIDTH / CACHE_WIDTH;
+			CHUNKED_HEIGHT = DISPLAY_HEIGHT / CACHE_HEIGHT;
+			
+			FULL_CHUNKED_WIDTH = CHUNKED_WIDTH + 2;
+			FULL_CHUNKED_HEIGHT = CHUNKED_HEIGHT + 2;
+			
+			FULL_CHUNKED_LENGTH = FULL_CHUNKED_WIDTH * FULL_CHUNKED_HEIGHT;
+			FULL_CHUNKED_LIVE_LENGTH = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH;
+			
+			FULL_DISPLAY_WIDTH = DISPLAY_WIDTH + CACHE_WIDTH * 2;
+			FULL_DISPLAY_HEIGHT = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
+			
+			bitmapData = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+			if (bitmap != null && bitmap.parent != null) {
+				bitmap.parent.removeChild(bitmap);
+			}
+			bitmap = new Bitmap(bitmapData);
+			
+			bitmap.x = -CACHE_WIDTH;
+			bitmap.y = -CACHE_HEIGHT;
+			addChild(bitmap);
+			
+			bitmapData2 = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+			
+			currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+			nextChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+
+			if (fpsBitmap != null && fpsBitmap.parent != null) {
+				fpsBitmap.parent.removeChild(fpsBitmap);
+			}
+			fpsBitmap.x = DISPLAY_WIDTH - fpsBitmap.width;
+			addChild(fpsBitmap);
+
+			if (enterFrameListener == drawChunkedAndNext) {
+				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+				addEventListener(Event.ENTER_FRAME, resetListener);
+				enterFrameListener = resetListener;
+			}
+		}
 		
 		private function onAddedToStage(e : Event) : void {
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 
 			stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+			stage.addEventListener(Event.RESIZE, reset);
+
+			reset();
 			
 			for each (maskName in describeType(masks).variable.@name) {
 				if (maskName == "vector" || maskName == "bitmapData") {
@@ -390,13 +476,6 @@ package {
 				traceMask(maskName);
 			}
 			*/
-
-			bitmap.x = -CACHE_WIDTH;
-			bitmap.y = -CACHE_HEIGHT;
-			addChild(bitmap);
-
-			fpsBitmap.x = DISPLAY_WIDTH - fpsBitmap.width;
-			addChild(fpsBitmap);
 		}
 		
 		private function traceMask(maskName : String) : void {
