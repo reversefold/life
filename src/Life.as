@@ -608,7 +608,7 @@ package {
 			if (loader == null) {
 				loadStartTime = getTimer();
 				trace("loading file");
-				var u : URLRequest = new URLRequest("../assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
+				var u : URLRequest = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
 				loader = new URLLoader(u);
 				loader.dataFormat = URLLoaderDataFormat.BINARY;
 				loader.addEventListener(Event.COMPLETE, onBinaryLoadComplete);

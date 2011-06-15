@@ -8,7 +8,7 @@ package {
         public static const CENTER : int = 2;
 
         /* You need this image: http://kaioa.com/b/0808/console.png */
-        [Embed(source = '../assets/console.png')]
+        [Embed(source = '/assets/console.png')]
         private static var CSheet : Class;
         private static var chars : Bitmap = new CSheet();
 
