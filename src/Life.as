@@ -36,97 +36,97 @@ package {
 	//[SWF(frameRate="100", width="2560", height="1500")]
 	[SWF(frameRate="1000")]//, width="1000", height="700"
 	public class Life extends Sprite {
-		private static const CACHE_WIDTH : uint = 3;
-		private static const CACHE_HEIGHT : uint = 3;
+		public static const CACHE_WIDTH : uint = 3;
+		public static const CACHE_HEIGHT : uint = 3;
 		
 		/*
-		private static const REQUESTED_WIDTH : uint = 2560;
-		private static const REQUESTED_HEIGHT : uint = 1500;
+		public static const REQUESTED_WIDTH : uint = 2560;
+		public static const REQUESTED_HEIGHT : uint = 1500;
 		*/
 		
-		private static const LOAD : Boolean = true;
-		private static const LOAD_JSON : Boolean = false;
+		public static const LOAD : Boolean = true;
+		public static const LOAD_JSON : Boolean = false;
 		
-		private static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
+		public static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
 		
-		private static const ALIVE_PIXEL : uint = 0xFF000000;
-		private static const DEAD_PIXEL : uint = 0xFFFFFFFF;
+		public static const ALIVE_PIXEL : uint = 0xFF000000;
+		public static const DEAD_PIXEL : uint = 0xFFFFFFFF;
 		
-		private static const FULL_CACHE_WIDTH : uint = CACHE_WIDTH + 2;
-		private static const FULL_CACHE_HEIGHT : uint = CACHE_HEIGHT + 2;
+		public static const FULL_CACHE_WIDTH : uint = CACHE_WIDTH + 2;
+		public static const FULL_CACHE_HEIGHT : uint = CACHE_HEIGHT + 2;
 		
-		private static const CACHE_VECTOR_LENGTH : uint = FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT;
-		private static const INNER_CACHE_VECTOR_LENGTH : uint = CACHE_WIDTH * CACHE_HEIGHT;
-		private static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
+		public static const CACHE_VECTOR_LENGTH : uint = FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT;
+		public static const INNER_CACHE_VECTOR_LENGTH : uint = CACHE_WIDTH * CACHE_HEIGHT;
+		public static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
 
-		private static const PROGRESS_Y : uint = 300;
+		public static const PROGRESS_Y : uint = 300;
 		
-		private static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
-		private static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
+		public static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
+		public static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
 		
-		private static var cache : Vector.<uint> = new Vector.<uint>(NUM_CACHE_PERMUTATIONS, true);
-		private static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 1), true);
+		public static var cache : Vector.<uint> = new Vector.<uint>(NUM_CACHE_PERMUTATIONS, true);
+		public static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 1), true);
 		
-		private static var cacheIdx : uint = 0;
-		private static var currentStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
-		private static var nextStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
-		private static var tmpStates : Vector.<uint>;
+		public static var cacheIdx : uint = 0;
+		public static var currentStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
+		public static var nextStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
+		public static var tmpStates : Vector.<uint>;
 		
-		private static var tempChunksToCheck : Vector.<Boolean>;
+		public static var tempChunksToCheck : Vector.<Boolean>;
 		
-		private static const preBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		private static const preBitmap : Bitmap = new Bitmap(preBitmapData);
-		private static const postBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		private static const postBitmap : Bitmap = new Bitmap(postBitmapData);
+		public static const preBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		public static const preBitmap : Bitmap = new Bitmap(preBitmapData);
+		public static const postBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		public static const postBitmap : Bitmap = new Bitmap(postBitmapData);
 		
-		private static var cacheRect : Rectangle = new Rectangle(1, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		private static var cacheRect2 : Rectangle = new Rectangle(FULL_CACHE_WIDTH + 4, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		private static var chunkRect : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
-		private static var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
+		public static var cacheRect : Rectangle = new Rectangle(1, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		public static var cacheRect2 : Rectangle = new Rectangle(FULL_CACHE_WIDTH + 4, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
+		public static var chunkRect : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
+		public static var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
 		
-		private static var masks : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		private static var maskOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		private static var maskNeighborOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		private static var maskNeighborOffsetNegative : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		private static var maskNames : Vector.<String> = new Vector.<String>();
+		public static var masks : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+		public static var maskOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+		public static var maskNeighborOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+		public static var maskNeighborOffsetNegative : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+		public static var maskNames : Vector.<String> = new Vector.<String>();
 		
-		private static var dataString : String = null;
-		private static var fileRef : FileReference;
+		public static var dataString : String = null;
+		public static var fileRef : FileReference;
 		
-		private static var full : uint;
-		private static var inner : uint;
-		private static var state : Chunk;
-		private static var maskName : String;
-		private static var innerVector : Vector.<uint>;
-		private static var jsonDecoder : JSONDecoderAsync = null;
-		private static var loadedDataObject : Object = null;
-		//private static var loadedDataObject : Object = LifeData.data2x2;
+		public static var full : uint;
+		public static var inner : uint;
+		public static var state : Chunk;
+		public static var maskName : String;
+		public static var innerVector : Vector.<uint>;
+		public static var jsonDecoder : JSONDecoderAsync = null;
+		public static var loadedDataObject : Object = null;
+		//public static var loadedDataObject : Object = LifeData.data2x2;
 		
-		private static var loader : URLLoader = null;
-		private static var cacheLoadIdx : uint = 0;
-		private static var stateLoadIdx : uint = 0;
-		private static var loaded : Boolean = false;
-		private static var fileProgress : uint = 0;
-		private static var fileSize : uint = 1;
+		public static var loader : URLLoader = null;
+		public static var cacheLoadIdx : uint = 0;
+		public static var stateLoadIdx : uint = 0;
+		public static var loaded : Boolean = false;
+		public static var fileProgress : uint = 0;
+		public static var fileSize : uint = 1;
 		
-		private static var jsonStartTime : * = null;
-		private static var loadStartTime : * = null;
-		private static var generateStartTime : * = null;
+		public static var jsonStartTime : * = null;
+		public static var loadStartTime : * = null;
+		public static var generateStartTime : * = null;
 		
-		private static var i : uint;
-		private static var upIdx : uint;
-		private static var downIdx : uint;
-		private static var currentState : Chunk;
-		private static var nextState : Chunk;
-		private static var point : Point = new Point();
+		public static var i : uint;
+		public static var upIdx : uint;
+		public static var downIdx : uint;
+		public static var currentState : Chunk;
+		public static var nextState : Chunk;
+		public static var point : Point = new Point();
 		
-		private static var loadFile : FileReference;
+		public static var loadFile : FileReference;
 		
-		private static var enterFrameListener : Function;
+		public static var enterFrameListener : Function;
 		
-		private static var random : Boolean = false;
+		public static var random : Boolean = false;
 		
-		private static var paused : Boolean = false;
+		public static var paused : Boolean = false;
 		
 		
 		
@@ -134,72 +134,59 @@ package {
 		 * This set of vars changes when the width/height change
 		 */
 		/* Original fixed values
-		private static const REQUESTED_WIDTH : uint = 1000;
-		private static const REQUESTED_HEIGHT : uint = 700;
+		public static const REQUESTED_WIDTH : uint = 1000;
+		public static const REQUESTED_HEIGHT : uint = 700;
 		
-		private static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
-		private static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
+		public static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
+		public static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
 		
-		private static const CHUNKED_WIDTH : uint = DISPLAY_WIDTH / CACHE_WIDTH;
-		private static const CHUNKED_HEIGHT : uint = DISPLAY_HEIGHT / CACHE_HEIGHT;
+		public static const CHUNKED_WIDTH : uint = DISPLAY_WIDTH / CACHE_WIDTH;
+		public static const CHUNKED_HEIGHT : uint = DISPLAY_HEIGHT / CACHE_HEIGHT;
 		
-		private static const FULL_CHUNKED_WIDTH : uint = CHUNKED_WIDTH + 2;
-		private static const FULL_CHUNKED_HEIGHT : uint = CHUNKED_HEIGHT + 2;
+		public static const FULL_CHUNKED_WIDTH : uint = CHUNKED_WIDTH + 2;
+		public static const FULL_CHUNKED_HEIGHT : uint = CHUNKED_HEIGHT + 2;
 		
-		private static const FULL_CHUNKED_LENGTH : uint = FULL_CHUNKED_WIDTH * FULL_CHUNKED_HEIGHT;
-		private static const FULL_CHUNKED_LIVE_LENGTH : uint = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH;
+		public static const FULL_CHUNKED_LENGTH : uint = FULL_CHUNKED_WIDTH * FULL_CHUNKED_HEIGHT;
+		public static const FULL_CHUNKED_LIVE_LENGTH : uint = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH;
 		
-		private static const FULL_DISPLAY_WIDTH : uint = DISPLAY_WIDTH + CACHE_WIDTH * 2;
-		private static const FULL_DISPLAY_HEIGHT : uint = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
+		public static const FULL_DISPLAY_WIDTH : uint = DISPLAY_WIDTH + CACHE_WIDTH * 2;
+		public static const FULL_DISPLAY_HEIGHT : uint = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
 		
-		private static var bitmapData : Raster = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
-		private static var bitmap : Bitmap = new Bitmap(bitmapData);
-		private static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		public static var bitmapData : Raster = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
+		public static var bitmap : Bitmap = new Bitmap(bitmapData);
+		public static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
 		
-		private static var currentChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-		private static var nextChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+		public static var currentChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
+		public static var nextChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 		*/
-		private static var REQUESTED_WIDTH : uint;
-		private static var REQUESTED_HEIGHT : uint;
+		public static var REQUESTED_WIDTH : uint;
+		public static var REQUESTED_HEIGHT : uint;
 		
-		private static var DISPLAY_WIDTH : uint;
-		private static var DISPLAY_HEIGHT : uint;
+		public static var DISPLAY_WIDTH : uint;
+		public static var DISPLAY_HEIGHT : uint;
 		
-		private static var CHUNKED_WIDTH : uint;
-		private static var CHUNKED_HEIGHT : uint;
+		public static var CHUNKED_WIDTH : uint;
+		public static var CHUNKED_HEIGHT : uint;
 		
-		private static var FULL_CHUNKED_WIDTH : uint;
-		private static var FULL_CHUNKED_HEIGHT : uint;
+		public static var FULL_CHUNKED_WIDTH : uint;
+		public static var FULL_CHUNKED_HEIGHT : uint;
 		
-		private static var FULL_CHUNKED_LENGTH : uint;
-		private static var FULL_CHUNKED_LIVE_LENGTH : uint;
+		public static var FULL_CHUNKED_LENGTH : uint;
+		public static var FULL_CHUNKED_LIVE_LENGTH : uint;
 		
-		private static var FULL_DISPLAY_WIDTH : uint;
-		private static var FULL_DISPLAY_HEIGHT : uint;
+		public static var FULL_DISPLAY_WIDTH : uint;
+		public static var FULL_DISPLAY_HEIGHT : uint;
 		
-		private static var bitmapData : Raster;
-		private static var bitmap : Bitmap;
-		private static var bitmapData2 : BitmapData;
+		public static var bitmapData : Raster;
+		public static var bitmap : Bitmap;
+		public static var bitmapData2 : BitmapData;
 		
-		private static var currentChunksToCheck : Vector.<Boolean>;
-		private static var nextChunksToCheck : Vector.<Boolean>;
+		public static var currentChunksToCheck : Vector.<Boolean>;
+		public static var nextChunksToCheck : Vector.<Boolean>;
 
 
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
-			if (LOAD) {
-				if (LOAD_JSON) {
-					addEventListener(Event.ENTER_FRAME, loadListener);
-					enterFrameListener = loadListener;
-				} else {
-					addEventListener(Event.ENTER_FRAME, loadBinaryListener);
-					enterFrameListener = loadBinaryListener;
-				}
-			} else {
-				addEventListener(Event.ENTER_FRAME, generateListener);
-				enterFrameListener = generateListener;
-			}
-			addEventListener(Event.ENTER_FRAME, drawFPS);
 		}
 
 		private function onKeyUp(e : KeyboardEvent) : void {
@@ -265,6 +252,7 @@ package {
 			
 			fileRef = new FileReference();
 			//fileRef.save(dataString, fn);
+			ba.compress();
 			fileRef.save(ba, fn);
 		}
 		
@@ -476,6 +464,20 @@ package {
 				traceMask(maskName);
 			}
 			*/
+
+			if (LOAD) {
+				if (LOAD_JSON) {
+					addEventListener(Event.ENTER_FRAME, loadListener);
+					enterFrameListener = loadListener;
+				} else {
+					addEventListener(Event.ENTER_FRAME, loadBinaryListener);
+					enterFrameListener = loadBinaryListener;
+				}
+			} else {
+				addEventListener(Event.ENTER_FRAME, generateListener);
+				enterFrameListener = generateListener;
+			}
+			addEventListener(Event.ENTER_FRAME, drawFPS);
 		}
 		
 		private function traceMask(maskName : String) : void {
@@ -506,13 +508,13 @@ package {
 			*/
 		}
 		
-		private static function uintToVec(i : uint, vec : Vector.<uint>) : void {
+		public static function uintToVec(i : uint, vec : Vector.<uint>) : void {
 			for (var idx : uint = 0; idx < vec.length; ++idx) {
 				vec[idx] = ((i >> idx) & 0x1) == 0x1 ? ALIVE_PIXEL : DEAD_PIXEL;
 			}
 		}
 		
-		private static function vecToUint(vec : Vector.<uint>) : uint {
+		public static function vecToUint(vec : Vector.<uint>) : uint {
 			var i : uint = 0;
 			for (var idx : uint = 0; idx < vec.length; ++idx) {
 				if (vec[idx] == ALIVE_PIXEL) {
@@ -596,6 +598,7 @@ package {
 		private function onBinaryLoadComplete(e : Event) : void {
 			trace("file loaded");
 			binaryData = e.target.data;
+			binaryData.uncompress();
 			
 			//jsonDecoder = new JSONDecoderAsync(e.target.data, true);
 			//jsonStartTime = getTimer();

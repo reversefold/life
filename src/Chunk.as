@@ -53,6 +53,7 @@ package {
 		
 		public function write(ba : ByteArray) : void {
 			ba.writeUnsignedInt(inner);
+			/*
 			ba.writeUnsignedInt(top);
 			ba.writeUnsignedInt(bottom);
 			ba.writeUnsignedInt(left);
@@ -65,11 +66,39 @@ package {
 			for (var i : uint = 0; i < vector.length; ++i) {
 				ba.writeUnsignedInt(vector[i]);
 			}
+			*/
 		}
 		
+		private static var innerVector : Vector.<uint>;
+		private static var i : uint;
+		private static var maskName : String;
 		public static function read(ba : ByteArray, w : uint, h : uint) : Chunk {
 			var c : Chunk = new Chunk(w, h);
 			c.inner = ba.readUnsignedInt();
+			
+			innerVector = new Vector.<uint>(Life.INNER_CACHE_VECTOR_LENGTH, true);
+			i = 0;
+			for (var y : uint = 1; y <= Life.CACHE_HEIGHT; ++y) {
+				var yo : uint = y * Life.FULL_CACHE_WIDTH;
+				for (var x : uint = 1; x <= Life.CACHE_WIDTH; ++x) {
+					innerVector[i] = (c.inner & (1 << x + yo)) ? Life.ALIVE_PIXEL : Life.DEAD_PIXEL;
+					++i;
+				}
+			}
+			//state = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
+			//state.setVector(innerVector);
+			c.setVector(innerVector);
+			for each (maskName in Life.maskNames) {
+				c[maskName] = (Life.masks[maskName] & c.inner); // & inner would be the same since the masks are all for the inner rect
+				//precalculate moving this masked bit to the place it needs to be for neighbor use
+				if (Life.maskNeighborOffsetNegative[maskName] == 1) {
+					c[maskName] >>= Life.maskNeighborOffsets[maskName]
+				} else {
+					c[maskName] <<= Life.maskNeighborOffsets[maskName];
+				}
+			}
+
+			/*
 			c.top = ba.readUnsignedInt();
 			c.bottom = ba.readUnsignedInt();
 			c.left = ba.readUnsignedInt();
@@ -83,6 +112,7 @@ package {
 				v[i] = ba.readUnsignedInt();
 			}
 			c.setVector(v);
+			*/
 			return c;
 		}
 	}
