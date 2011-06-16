@@ -20,6 +20,7 @@ package {
 	import flash.geom.Rectangle;
 	import flash.net.FileFilter;
 	import flash.net.FileReference;
+	import flash.net.SharedObject;
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
@@ -184,6 +185,9 @@ package {
 		public static var currentChunksToCheck : Vector.<Boolean>;
 		public static var nextChunksToCheck : Vector.<Boolean>;
 
+		private static var binaryData : ByteArray;
+		private static var lso : SharedObject;
+
 
 		public function Life() {
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
@@ -342,21 +346,31 @@ package {
 			drawChunked();
 			
 			paused = false;
-			invertPause(true);
+			//invertPause(true);
+			pause(true);
+		}
+		
+		private function pause(resetFPS : Boolean = false) : void {
+			if (resetFPS) {
+				FPSCounter.reset();
+			}
+			removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+			removeEventListener(Event.ENTER_FRAME, drawFPS);
+			paused = true;
+		}
+		
+		private function unpause() : void {
+			addEventListener(Event.ENTER_FRAME, enterFrameListener);
+			addEventListener(Event.ENTER_FRAME, drawFPS);
+			paused = false;
 		}
 		
 		private function invertPause(resetFPS : Boolean = false) : void {
 			if (paused) {
-				addEventListener(Event.ENTER_FRAME, enterFrameListener);
-				addEventListener(Event.ENTER_FRAME, drawFPS);
+				unpause();
 			} else {
-				if (resetFPS) {
-					FPSCounter.reset();
-				}
-				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-				removeEventListener(Event.ENTER_FRAME, drawFPS);
+				pause(resetFPS);
 			}
-			paused = !paused;
 		}
 
 		
@@ -594,10 +608,12 @@ package {
 			fileSize = e.bytesTotal;
 		}
 		
-		private static var binaryData : ByteArray;
 		private function onBinaryLoadComplete(e : Event) : void {
 			trace("file loaded");
 			binaryData = e.target.data;
+			lso = SharedObject.getLocal(CHUNKED_WIDTH + "x" + CHUNKED_HEIGHT, "/");
+			lso.data.bin = binaryData;
+			lso.flush();
 			binaryData.uncompress();
 			
 			//jsonDecoder = new JSONDecoderAsync(e.target.data, true);
@@ -608,15 +624,24 @@ package {
 		private function loadBinaryListener(e : Event) : void {
 			//bitmapData2.fillRect(bitmapData2.rect, 0x0);
 			bitmapData.fillRect(bitmapData.rect, 0);
-			if (loader == null) {
+			if (loader == null && lso == null) {
 				loadStartTime = getTimer();
-				trace("loading file");
-				var u : URLRequest = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
-				loader = new URLLoader(u);
-				loader.dataFormat = URLLoaderDataFormat.BINARY;
-				loader.addEventListener(Event.COMPLETE, onBinaryLoadComplete);
-				loader.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
-				loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
+
+				lso = SharedObject.getLocal(CHUNKED_WIDTH + "x" + CHUNKED_HEIGHT, "/");
+				if (lso.data.bin != null) {
+					trace("using locally stored data");
+					binaryData = lso.data.bin;
+					fileProgress = fileSize = binaryData.bytesAvailable;
+					binaryData.uncompress();
+				} else {
+					trace("loading file");
+					var u : URLRequest = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
+					loader = new URLLoader(u);
+					loader.dataFormat = URLLoaderDataFormat.BINARY;
+					loader.addEventListener(Event.COMPLETE, onBinaryLoadComplete);
+					loader.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
+					loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
+				}
 			} else if (binaryData != null) {
 				if (cacheLoadIdx == 0) {
 					binaryData.readUnsignedInt();//CACHE_WIDTH
@@ -836,7 +861,7 @@ package {
 			addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
 			enterFrameListener = drawChunkedAndNext;
 			
-			invertPause();
+			//pause();
 		}
 		
 		private function renderNaive(e : Event) : void {
