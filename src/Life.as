@@ -125,7 +125,8 @@ package {
 		
 		public static var enterFrameListener : Function;
 		
-		public static var random : Boolean = false;
+		//public static var random : Boolean = false;
+		public static var type : uint = 0;
 		
 		public static var paused : Boolean = false;
 		
@@ -196,7 +197,7 @@ package {
 		private function onKeyUp(e : KeyboardEvent) : void {
 			trace("Pressed " + e.charCode);
 			if (e.charCode == 'r'.charCodeAt()) {
-				random = !random;
+				type = (type + 1) % 3;
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				enterFrameListener = resetListener;
 				addEventListener(Event.ENTER_FRAME, resetListener);
@@ -816,20 +817,36 @@ package {
 			var y : uint;
 			var yo : uint;
 			var x : uint;
-			if (random) {
-				for (y = 1; y < CHUNKED_HEIGHT - 1; ++y) {
-					yo = FULL_CHUNKED_WIDTH * y;
-					for (x = 1; x < CHUNKED_WIDTH - 1; ++x) {
-						currentStates[x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+			switch (type) {
+				case 2:
+					for (y = 1; y < CHUNKED_HEIGHT - 1; ++y) {
+						yo = FULL_CHUNKED_WIDTH * y;
+						for (x = 1; x < CHUNKED_WIDTH - 1; ++x) {
+							currentStates[x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+						}
 					}
-				}
-			} else {
-				for (y = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
-					yo = FULL_CHUNKED_WIDTH * y;
-					for (x = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
-						currentStates[x + yo] = masks.inner;
+					break;
+				case 1:
+					var m : uint = 7 << (FULL_CACHE_WIDTH + 1);
+					for (y = 2; y < FULL_CACHE_HEIGHT - 1; ++y) {
+						m |= 1 << (FULL_CACHE_WIDTH * y + 1);
 					}
-				}
+					for (y = 1; y < CHUNKED_HEIGHT - 1; y+=2) {
+						yo = FULL_CHUNKED_WIDTH * y;
+						for (x = 1; x < CHUNKED_WIDTH - 1; ++x) {
+							currentStates[x + yo] = m;
+						}
+					}
+					break;
+				case 0:
+				default:
+					for (y = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
+						yo = FULL_CHUNKED_WIDTH * y;
+						for (x = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
+							currentStates[x + yo] = masks.inner;
+						}
+					}
+					break;
 			}
 			currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
 			for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
