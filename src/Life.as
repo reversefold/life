@@ -875,7 +875,9 @@ package {
 			/**/
 			
 			removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-			addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
+			if (!paused) {
+				addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
+			}
 			enterFrameListener = drawChunkedAndNext;
 			
 			//pause();
