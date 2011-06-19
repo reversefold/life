@@ -633,46 +633,48 @@ package {
 			lso = SharedObject.getLocal(CHUNKED_WIDTH + "x" + CHUNKED_HEIGHT, "/");
 			lso.data.bin = binaryData;
 			lso.flush();
-			binaryData.uncompress();
+			uncompress = true;
 			
 			//jsonDecoder = new JSONDecoderAsync(e.target.data, true);
 			//jsonStartTime = getTimer();
 			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
 		}
 
+		private var uncompress : Boolean = false;
 		private function loadBinaryListener(e : Event) : void {
 			//bitmapData2.fillRect(bitmapData2.rect, 0x0);
 			bitmapData.fillRect(bitmapData.rect, 0);
+			var u : URLRequest;
 			if (loader == null && lso == null) {
 				loadStartTime = getTimer();
 
 				lso = SharedObject.getLocal(CHUNKED_WIDTH + "x" + CHUNKED_HEIGHT, "/");
-				var load : Boolean = true;
-				if (load && d != null) {
+				if (d != null) {
 					trace("using embedded data");
 					binaryData = new d();
+					uncompress = true;
 					fileProgress = fileSize = binaryData.bytesAvailable;
-					try {
-						binaryData.uncompress();
-						load = false;
-					} catch (e : Error) {
-						load = true;
-					}
-				}
-				if (load && lso.data.bin != null) {
+				} else if (lso.data.bin != null) {
 					trace("using locally stored data");
 					binaryData = lso.data.bin;
 					fileProgress = fileSize = binaryData.bytesAvailable;
-					try {
-						binaryData.uncompress();
-						load = false;
-					} catch (e : Error) {
-						load = true;
-					}
-				}
-				if (load) {
+					uncompress = true;
+				} else {
 					trace("loading file");
-					var u : URLRequest = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
+					u = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
+					loader = new URLLoader(u);
+					loader.dataFormat = URLLoaderDataFormat.BINARY;
+					loader.addEventListener(Event.COMPLETE, onBinaryLoadComplete);
+					loader.addEventListener(IOErrorEvent.IO_ERROR, onIoError);
+					loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
+				}
+			} else if (binaryData != null && uncompress) {
+				try {
+					binaryData.uncompress();
+					uncompress = false;
+				} catch (e : Error) {
+					trace("loading file");
+					u = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
 					loader = new URLLoader(u);
 					loader.dataFormat = URLLoaderDataFormat.BINARY;
 					loader.addEventListener(Event.COMPLETE, onBinaryLoadComplete);
