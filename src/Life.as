@@ -36,9 +36,13 @@ package {
 	//[SWF(frameRate="100", width="1000", height="1000")]
 	//[SWF(frameRate="100", width="2560", height="1500")]
 	[SWF(frameRate="1000")]//, width="1000", height="700"
+	[Frame(factoryClass="Preloader")]
 	public class Life extends Sprite {
 		public static const CACHE_WIDTH : uint = 3;
 		public static const CACHE_HEIGHT : uint = 3;
+		
+		[Embed(source="assets/data/3x3.bin", mimeType="application/octet-stream")]
+		private var d : Class;
 		
 		/*
 		public static const REQUESTED_WIDTH : uint = 2560;
@@ -438,6 +442,8 @@ package {
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 
+			graphics.clear();
+			
 			stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 			stage.addEventListener(Event.RESIZE, reset);
 
@@ -642,8 +648,18 @@ package {
 
 				lso = SharedObject.getLocal(CHUNKED_WIDTH + "x" + CHUNKED_HEIGHT, "/");
 				var load : Boolean = true;
-				/**/
-				if (lso.data.bin != null) {
+				if (load && d != null) {
+					trace("using embedded data");
+					binaryData = new d();
+					fileProgress = fileSize = binaryData.bytesAvailable;
+					try {
+						binaryData.uncompress();
+						load = false;
+					} catch (e : Error) {
+						load = true;
+					}
+				}
+				if (load && lso.data.bin != null) {
 					trace("using locally stored data");
 					binaryData = lso.data.bin;
 					fileProgress = fileSize = binaryData.bytesAvailable;
@@ -654,7 +670,6 @@ package {
 						load = true;
 					}
 				}
-				/**/
 				if (load) {
 					trace("loading file");
 					var u : URLRequest = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
