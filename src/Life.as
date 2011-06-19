@@ -64,6 +64,9 @@ package {
 		
 		public static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
 		public static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
+
+		public static var sizeBitmapData : BitmapData = new BitmapData(100, 20, true);
+		public static var sizeBitmap : Bitmap = new Bitmap(sizeBitmapData);
 		
 		public static var cache : Vector.<uint> = new Vector.<uint>(NUM_CACHE_PERMUTATIONS, true);
 		public static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 1), true);
@@ -381,6 +384,8 @@ package {
 			
 			DISPLAY_WIDTH = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
 			DISPLAY_HEIGHT = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
+
+			drawSize();
 			
 			CHUNKED_WIDTH = DISPLAY_WIDTH / CACHE_WIDTH;
 			CHUNKED_HEIGHT = DISPLAY_HEIGHT / CACHE_HEIGHT;
@@ -414,6 +419,13 @@ package {
 			}
 			fpsBitmap.x = DISPLAY_WIDTH - fpsBitmap.width;
 			addChild(fpsBitmap);
+
+			if (sizeBitmap != null && sizeBitmap.parent != null) {
+				sizeBitmap.parent.removeChild(sizeBitmap);
+			}
+			sizeBitmap.x = DISPLAY_WIDTH - sizeBitmap.width;
+			sizeBitmap.y = 50;
+			addChild(sizeBitmap);
 
 			if (enterFrameListener == drawChunkedAndNext) {
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
@@ -629,12 +641,21 @@ package {
 				loadStartTime = getTimer();
 
 				lso = SharedObject.getLocal(CHUNKED_WIDTH + "x" + CHUNKED_HEIGHT, "/");
+				var load : Boolean = true;
+				/**/
 				if (lso.data.bin != null) {
 					trace("using locally stored data");
 					binaryData = lso.data.bin;
 					fileProgress = fileSize = binaryData.bytesAvailable;
-					binaryData.uncompress();
-				} else {
+					try {
+						binaryData.uncompress();
+						load = false;
+					} catch (e : Error) {
+						load = true;
+					}
+				}
+				/**/
+				if (load) {
 					trace("loading file");
 					var u : URLRequest = new URLRequest("assets/data/" + CACHE_WIDTH + "x" + CACHE_HEIGHT + ".bin");
 					loader = new URLLoader(u);
@@ -644,34 +665,44 @@ package {
 					loader.addEventListener(ProgressEvent.PROGRESS, onProgress);
 				}
 			} else if (binaryData != null) {
-				if (cacheLoadIdx == 0) {
-					binaryData.readUnsignedInt();//CACHE_WIDTH
-					binaryData.readUnsignedInt();//CACHE_HEIGHT
-					cache = new Vector.<uint>(binaryData.readUnsignedInt(), true);
-				}
-				if (cacheLoadIdx < cache.length) {
-					for (i = 0; i < 120000 && cacheLoadIdx < cache.length; ++i) {
-						cache[cacheLoadIdx] = binaryData.readUnsignedInt();
-						++cacheLoadIdx;
+				try {
+					if (cacheLoadIdx == 0) {
+						binaryData.readUnsignedInt();//CACHE_WIDTH
+						binaryData.readUnsignedInt();//CACHE_HEIGHT
+						cache = new Vector.<uint>(binaryData.readUnsignedInt(), true);
 					}
-					/*
-					for (var i : uint = 0; i < cache.length; ++i) {
-						cache[i] = binaryData.readUnsignedInt();
-					}
-					*/
-				} else {
-					if (stateLoadIdx == 0) {
-						states = new Vector.<Chunk>(binaryData.readUnsignedInt(), true);
-					}
-					if (stateLoadIdx < states.length) {
-						for (i = 0; i < 120000 && stateLoadIdx < states.length; ++i) {
-							if (binaryData.readBoolean()) {
-								states[binaryData.readUnsignedInt()] = Chunk.read(binaryData, CACHE_WIDTH, CACHE_HEIGHT);
-							}
-							++stateLoadIdx;
+					if (cacheLoadIdx < cache.length) {
+						for (i = 0; i < 120000 && cacheLoadIdx < cache.length; ++i) {
+							cache[cacheLoadIdx] = binaryData.readUnsignedInt();
+							++cacheLoadIdx;
 						}
+						/*
+						for (var i : uint = 0; i < cache.length; ++i) {
+							cache[i] = binaryData.readUnsignedInt();
+						}
+						*/
 					} else {
-						loaded = true;
+						if (stateLoadIdx == 0) {
+							states = new Vector.<Chunk>(binaryData.readUnsignedInt(), true);
+						}
+						if (stateLoadIdx < states.length) {
+							for (i = 0; i < 120000 && stateLoadIdx < states.length; ++i) {
+								if (binaryData.readBoolean()) {
+									states[binaryData.readUnsignedInt()] = Chunk.read(binaryData, CACHE_WIDTH, CACHE_HEIGHT);
+								}
+								++stateLoadIdx;
+							}
+						} else {
+							loaded = true;
+						}
+					}
+				} catch (e : Error) {
+					if (lso != null) {
+						lso.data.bin = null;
+						lso.flush();
+						lso = null;
+						loader = null;
+						binaryData = null;
 					}
 				}
 				/*
@@ -1176,6 +1207,17 @@ package {
 			fpsBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);
 			DText.draw(fpsBitmapData, FPSCounter.update(), fpsBitmapData.width - 1, 0, DText.RIGHT);
 			fpsBitmapData.unlock();
+			/** /
+			graphics.beginBitmapFill(fpsbd);
+			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
+			graphics.endFill();
+			/**/
+		}
+		private function drawSize(e : Event = null) : void {
+			sizeBitmapData.lock();
+			sizeBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);
+			DText.draw(sizeBitmapData, DISPLAY_WIDTH + "x" + DISPLAY_HEIGHT, sizeBitmapData.width - 1, 0, DText.RIGHT);
+			sizeBitmapData.unlock();
 			/** /
 			graphics.beginBitmapFill(fpsbd);
 			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
