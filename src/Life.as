@@ -39,6 +39,7 @@ package {
 	[Frame(factoryClass="Preloader")]
 	public class Life extends Sprite {
         public var cacheData : CacheData;
+        public var cacheDataGenerator : CacheDataGenerator;
         public var cacheDataBinaryLoader : CacheDataBinaryLoader;
         
         /**/
@@ -435,6 +436,7 @@ package {
 					enterFrameListener = loadBinaryListener;
 				//}
 			} else {
+                cacheDataGenerator = new CacheDataGenerator(cacheData);
 				addEventListener(Event.ENTER_FRAME, generateListener);
 				enterFrameListener = generateListener;
 			}
@@ -757,25 +759,25 @@ package {
 			var i : uint = 0;
             var more : Boolean = true;
 			while (i < CACHE_COMPUTATIONS_PER_FRAME && more) {
-				more = cacheData.calculateNext();
+				more = cacheDataGenerator.calculateNext();
 				++i;
 			}
-			preBitmapData.setVector(preBitmapData.rect, cacheData.currentStates);
+			preBitmapData.setVector(preBitmapData.rect, cacheDataGenerator.currentStates);
 			//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
 			//bitmapData.setVector(cacheRect, currentStates);
 			//draw(c, cacheRect, cacheMat, 10, 10);
-			postBitmapData.setVector(postBitmapData.rect, cacheData.nextStates);
+			postBitmapData.setVector(postBitmapData.rect, cacheDataGenerator.nextStates);
 			//draw(nextStates, cacheRect2, cacheMat);
 			
 			bitmapData.fillRect(bitmapData.rect, 0x0);
 			
-			drawProgressBar(cacheData.cacheIdx, cacheData.NUM_CACHE_PERMUTATIONS, PROGRESS_Y);
+			drawProgressBar(cacheDataGenerator.cacheIdx, cacheData.NUM_CACHE_PERMUTATIONS, PROGRESS_Y);
 			
-			DText.draw(bitmapData, String(cacheData.cacheIdx - 1), 10 + 10 * cacheData.FULL_CACHE_WIDTH / 2, 15 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
-			DText.draw(bitmapData, String((cacheData.cacheIdx - 1) & cacheData.masks.inner), 10 + 10 * cacheData.FULL_CACHE_WIDTH / 2, 35 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String(cacheDataGenerator.cacheIdx - 1), 10 + 10 * cacheData.FULL_CACHE_WIDTH / 2, 15 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String((cacheDataGenerator.cacheIdx - 1) & cacheData.masks.inner), 10 + 10 * cacheData.FULL_CACHE_WIDTH / 2, 35 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
 			
-			DText.draw(bitmapData, String(cacheData.full), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
-			DText.draw(bitmapData, String(cacheData.inner), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String(cacheDataGenerator.full), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String(cacheDataGenerator.inner), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
 			/*
 			graphics.beginBitmapFill(bitmapData);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
@@ -936,7 +938,7 @@ package {
 			tmpStates = currentStates;
 			currentStates = nextStates;
 			nextStates = tmpStates;
-            CacheData.nextFromPrev(currentStates, nextStates, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+            CacheDataGenerator.nextFromPrev(currentStates, nextStates, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 		}
 
 		private function draw(vec : Vector.<uint>, rect : Rectangle, mat : Matrix = null) : void {
