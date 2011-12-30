@@ -38,9 +38,14 @@ package {
 	[SWF(frameRate="1000")]//, width="1000", height="700"
 	[Frame(factoryClass="Preloader")]
 	public class Life extends Sprite {
+        public var cacheData : CacheData;
+        public var cacheDataBinaryLoader : CacheDataBinaryLoader;
+        
+        /**/
 		public static const CACHE_WIDTH : uint = 3;
 		public static const CACHE_HEIGHT : uint = 3;
-		
+		/**/
+        
 		[Embed(source="assets/data/3x3.bin", mimeType="application/octet-stream")]
 		private var d : Class;
 		
@@ -49,7 +54,7 @@ package {
 		public static const REQUESTED_HEIGHT : uint = 1500;
 		*/
 		
-		public static const LOAD : Boolean = true;
+		public static const LOAD : Boolean = false;
 		public static const LOAD_JSON : Boolean = false;
 		
 		public static const CACHE_COMPUTATIONS_PER_FRAME : uint = 400;
@@ -57,13 +62,6 @@ package {
 		public static const ALIVE_PIXEL : uint = 0xFF000000;
 		public static const DEAD_PIXEL : uint = 0xFFFFFFFF;
 		
-		public static const FULL_CACHE_WIDTH : uint = CACHE_WIDTH + 2;
-		public static const FULL_CACHE_HEIGHT : uint = CACHE_HEIGHT + 2;
-		
-		public static const CACHE_VECTOR_LENGTH : uint = FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT;
-		public static const INNER_CACHE_VECTOR_LENGTH : uint = CACHE_WIDTH * CACHE_HEIGHT;
-		public static const NUM_CACHE_PERMUTATIONS : uint = Math.pow(2, CACHE_VECTOR_LENGTH);
-
 		public static const PROGRESS_Y : uint = 300;
 		
 		public static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
@@ -72,47 +70,28 @@ package {
 		public static var sizeBitmapData : BitmapData = new BitmapData(100, 20, true);
 		public static var sizeBitmap : Bitmap = new Bitmap(sizeBitmapData);
 		
-		public static var cache : Vector.<uint> = new Vector.<uint>(NUM_CACHE_PERMUTATIONS, true);
-		public static var states : Vector.<Chunk> = new Vector.<Chunk>(Math.pow(2, CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 1), true);
-		
-		public static var cacheIdx : uint = 0;
-		public static var currentStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
-		public static var nextStates : Vector.<uint> = new Vector.<uint>(CACHE_VECTOR_LENGTH, true);
 		public static var tmpStates : Vector.<uint>;
 		
 		public static var tempChunksToCheck : Vector.<Boolean>;
 		
-		public static const preBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		public static const preBitmap : Bitmap = new Bitmap(preBitmapData);
-		public static const postBitmapData : BitmapData = new BitmapData(FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		public static const postBitmap : Bitmap = new Bitmap(postBitmapData);
+		public static var preBitmapData : BitmapData;
+		public static var preBitmap : Bitmap;
+		public static var postBitmapData : BitmapData;
+		public static var postBitmap : Bitmap;
 		
-		public static var cacheRect : Rectangle = new Rectangle(1, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		public static var cacheRect2 : Rectangle = new Rectangle(FULL_CACHE_WIDTH + 4, 1, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-		public static var chunkRect : Rectangle = new Rectangle(0, 0, CACHE_WIDTH, CACHE_HEIGHT);
-		public static var cacheMat : Matrix = new Matrix(10, 0, 0, 10);
-		
-		public static var masks : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		public static var maskOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		public static var maskNeighborOffsets : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		public static var maskNeighborOffsetNegative : Chunk = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-		public static var maskNames : Vector.<String> = new Vector.<String>();
+		public static var cacheRect : Rectangle;
+		public static var cacheRect2 : Rectangle;
+		public static var chunkRect : Rectangle;
+		public static var cacheMat : Matrix;
 		
 		public static var dataString : String = null;
 		public static var fileRef : FileReference;
 		
-		public static var full : uint;
-		public static var inner : uint;
-		public static var state : Chunk;
-		public static var maskName : String;
-		public static var innerVector : Vector.<uint>;
 		public static var jsonDecoder : JSONDecoderAsync = null;
 		public static var loadedDataObject : Object = null;
 		//public static var loadedDataObject : Object = LifeData.data2x2;
 		
 		public static var loader : URLLoader = null;
-		public static var cacheLoadIdx : uint = 0;
-		public static var stateLoadIdx : uint = 0;
 		public static var loaded : Boolean = false;
 		public static var fileProgress : uint = 0;
 		public static var fileSize : uint = 1;
@@ -136,8 +115,11 @@ package {
 		public static var type : uint = 0;
 		
 		public static var paused : Boolean = false;
-		
-		
+
+        
+        public var currentStates : Vector.<uint>;
+        public var nextStates : Vector.<uint>;
+
 		
 		/*
 		 * This set of vars changes when the width/height change
@@ -215,6 +197,7 @@ package {
 			} else if (e.charCode == 'f'.charCodeAt()) {
 				FPSCounter.reset();
 				return;
+            /*
 			} else if (e.charCode == 'l'.charCodeAt()) {
 				loadFile = new FileReference();
 				loadFile.addEventListener(Event.SELECT, onLoadFileSelect);
@@ -222,6 +205,7 @@ package {
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				enterFrameListener = null;
 				return;
+            */
 			} else if (e.charCode == 'n'.charCodeAt()) {
 				drawChunkedAndNext();
 				return;
@@ -238,43 +222,23 @@ package {
 				enterFrameListener = drawChunkedAndNext;
 			}
 			*/
-			if (e.charCode != 's'.charCodeAt()) {
-				return;
-			}
-			var fn : String = CACHE_WIDTH + "x" + CACHE_HEIGHT
-				//+ ".json";
-				+ ".bin";
-			var ba : ByteArray = new ByteArray();
-			ba.writeUnsignedInt(CACHE_WIDTH);
-			ba.writeUnsignedInt(CACHE_HEIGHT);
-			ba.writeUnsignedInt(cache.length);
-			for (var i : uint = 0; i < cache.length; ++i) {
-				ba.writeUnsignedInt(cache[i]);
-			}
-			ba.writeUnsignedInt(states.length);
-			for (i = 0; i < states.length; ++i) {
-				if (states[i] == null) {
-					ba.writeBoolean(false);
-				} else {
-					ba.writeBoolean(true);
-					ba.writeUnsignedInt(i);
-					states[i].write(ba);
-				}
-			}
-			
-			fileRef = new FileReference();
-			//fileRef.save(dataString, fn);
-			ba.compress();
-			fileRef.save(ba, fn);
+            else if (e.charCode == 's'.charCodeAt()) {
+                var fn : String = cacheData.CACHE_WIDTH + "x" + cacheData.CACHE_HEIGHT
+                    //+ ".json";
+                    + ".bin";
+                var ba : ByteArray = CacheDataBinaryLoader.getBinaryData(cacheData);
+                var fileRef : FileReference = new FileReference();
+                fileRef.save(ba, fn);
+            }
 		}
-		
+		/*
 		private function onLoadFileSelect(e : Event) : void {
 			loadFile.addEventListener(ProgressEvent.PROGRESS, onProgress);
 			loadFile.addEventListener(Event.COMPLETE, onLoadRLEComplete);
 			loadFile.load();
 		}
-		
-		private function onLoadRLEComplete(e : Event) : void {
+
+        private function onLoadRLEComplete(e : Event) : void {
 			var str : String = loadFile.data.toString();
 			var i : uint = 0;
 			var lines : Vector.<String> = Vector.<String>(str.split("\n"));
@@ -334,7 +298,7 @@ package {
 								+ (y
 									+ int(FULL_CHUNKED_HEIGHT / 2 - height / 2)
 								  ) * FULL_CHUNKED_WIDTH;
-							nextStates[idx] = currentStates[idx] = masks.inner;
+							nextStates[idx] = currentStates[idx] = cacheData.masks.inner;
 							//nextChunksToCheck[idx] = currentChunksToCheck[idx] = true;
 							++x;
 						}
@@ -357,7 +321,7 @@ package {
 			//invertPause(true);
 			pause(true);
 		}
-		
+		*/
 		private function pause(resetFPS : Boolean = false) : void {
 			if (resetFPS) {
 				FPSCounter.reset();
@@ -449,168 +413,34 @@ package {
 
 			reset();
 			
-			for each (maskName in describeType(masks).variable.@name) {
-				if (maskName == "vector" || maskName == "bitmapData") {
-					continue;
-				}
-				maskNames.push(maskName);
-			}
+            cacheData = new CacheData(CACHE_WIDTH, CACHE_HEIGHT);
 
-			maskOffsets.topLeft = maskOffsets.top = maskOffsets.left = (1 + FULL_CACHE_WIDTH);
-			maskOffsets.topRight = maskOffsets.right = (2 * FULL_CACHE_WIDTH - 2);
-			maskOffsets.bottomLeft = maskOffsets.bottom = (CACHE_VECTOR_LENGTH - 2 * FULL_CACHE_WIDTH + 1);
-			maskOffsets.bottomRight = (CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 2);
-
-			masks.topLeft = masks.topRight = masks.bottomLeft = masks.bottomRight = 1;
-			for (var x : uint = 0; x < CACHE_WIDTH; ++x) {
-				masks.top |= 1 << x;
-			}
-			masks.bottom = masks.top;
-			
-			var i : uint = 0;
-			for (var y : uint = 0; y < CACHE_HEIGHT; ++y, i += FULL_CACHE_WIDTH) {
-				masks.left |= 1 << i;
-			}
-			masks.right = masks.left;
-			
-			for each (maskName in maskNames) {
-				masks[maskName] <<= maskOffsets[maskName];
-			}
-			
-			i = 0;
-			for (y = 0; y < CACHE_HEIGHT; ++y, i += FULL_CACHE_WIDTH) {
-				masks.inner |= masks.top << i;
-			}
-			
-			maskNeighborOffsets.bottomRight 
-				 = maskNeighborOffsets.topLeft = maskOffsets.bottomRight - maskOffsets.topLeft + FULL_CACHE_WIDTH + 1;
-			maskNeighborOffsets.bottomLeft
-				 = maskNeighborOffsets.topRight = maskOffsets.bottomLeft - maskOffsets.topRight + FULL_CACHE_WIDTH - 1;
-			maskNeighborOffsets.bottom
-				 = maskNeighborOffsets.top = maskOffsets.bottom - maskOffsets.top + FULL_CACHE_WIDTH;
-			maskNeighborOffsets.right
-				 = maskNeighborOffsets.left = maskOffsets.right - maskOffsets.left + 1;
-			maskNeighborOffsetNegative.bottomRight = maskNeighborOffsetNegative.bottomLeft
-				= maskNeighborOffsetNegative.bottom = maskNeighborOffsetNegative.right = 1;
-			/*
-			for each (maskName in maskNames) {
-				traceMask(maskName);
-			}
-			*/
+            preBitmapData = new BitmapData(cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
+            preBitmap = new Bitmap(preBitmapData);
+            postBitmapData = new BitmapData(cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
+            postBitmap = new Bitmap(postBitmapData);
+            cacheRect = new Rectangle(1, 1, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
+            cacheRect2 = new Rectangle(cacheData.FULL_CACHE_WIDTH + 4, 1, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
+            chunkRect = new Rectangle(0, 0, cacheData.CACHE_WIDTH, cacheData.CACHE_HEIGHT);
+            cacheMat = new Matrix(10, 0, 0, 10);
 
 			if (LOAD) {
+                /*
 				if (LOAD_JSON) {
 					addEventListener(Event.ENTER_FRAME, loadListener);
 					enterFrameListener = loadListener;
 				} else {
+                */
 					addEventListener(Event.ENTER_FRAME, loadBinaryListener);
 					enterFrameListener = loadBinaryListener;
-				}
+				//}
 			} else {
 				addEventListener(Event.ENTER_FRAME, generateListener);
 				enterFrameListener = generateListener;
 			}
 			addEventListener(Event.ENTER_FRAME, drawFPS);
 		}
-		
-		private function traceMask(maskName : String) : void {
-			trace(maskName);
-			_traceMask(masks[maskName]);
-		}
-		
-		private function _traceMask(mask : uint) : void {
-			var str : String = mask.toString(2);
-			trace((StringUtil.repeat("0", FULL_CACHE_WIDTH * FULL_CACHE_HEIGHT - str.length) + str)
-					.split('')
-					.reverse()
-					.join(" ")
-					.split(new RegExp("(" + StringUtil.repeat(". ", FULL_CACHE_WIDTH) + ")"))
-					.join("\n ")
-					.replace(/\n \n/g, "\n")
-					.substr(1));
-			/*
-			var line : String = maskName;
-			for (var i : uint = 0; i < len; ++i) {
-				if (i % fw == 0) {
-					trace(line);
-					line = "";
-				}
-				line += " " + ((mask >> i) & 1);
-			}
-			trace(line);
-			*/
-		}
-		
-		public static function uintToVec(i : uint, vec : Vector.<uint>) : void {
-			for (var idx : uint = 0; idx < vec.length; ++idx) {
-				vec[idx] = ((i >> idx) & 0x1) == 0x1 ? ALIVE_PIXEL : DEAD_PIXEL;
-			}
-		}
-		
-		public static function vecToUint(vec : Vector.<uint>) : uint {
-			var i : uint = 0;
-			for (var idx : uint = 0; idx < vec.length; ++idx) {
-				if (vec[idx] == ALIVE_PIXEL) {
-					i += 0x1 << idx;
-				}
-			}
-			return i;
-		}
-		
-		private function fillCache() : void {
-			uintToVec(cacheIdx, currentStates);
-			nextFromPrev(currentStates, nextStates, FULL_CACHE_WIDTH, FULL_CACHE_HEIGHT);
-			full = vecToUint(nextStates);
-			
-			if (cacheIdx > 1000000) {
-			var topFlip : uint = 0;
-			var ROW_MASK : uint = 0;
-			for (i = 0; i < FULL_CACHE_WIDTH; ++i) {
-				ROW_MASK |= 1 << i;
-			}
-			trace("cacheIdx");
-			_traceMask(cacheIdx);
-			var i : uint;
-			for (i = 0; i < CACHE_VECTOR_LENGTH; i += FULL_CACHE_WIDTH) {
-				var flipBits : int = (CACHE_VECTOR_LENGTH - 2 * i - FULL_CACHE_WIDTH);
-				if (flipBits >= 0) {
-					topFlip |= (cacheIdx & (ROW_MASK << i)) << flipBits;
-				} else {
-					topFlip |= (cacheIdx & (ROW_MASK << i)) >> -flipBits;
-				}
-			}
-			trace("topFlip");
-			_traceMask(topFlip);
-			}
-			
-			inner = full & masks.inner;
-			if (states[inner] == null) {
-				innerVector = new Vector.<uint>(INNER_CACHE_VECTOR_LENGTH, true);
-				i = 0;
-				for (var y : uint = 1; y <= CACHE_HEIGHT; ++y) {
-					var yo : uint = y * FULL_CACHE_WIDTH;
-					for (var x : uint = 1; x <= CACHE_WIDTH; ++x) {
-						innerVector[i] = (full & (1 << x + yo)) ? ALIVE_PIXEL : DEAD_PIXEL;
-						++i;
-					}
-				}
-				state = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-				state.setVector(innerVector);
-				for each (maskName in maskNames) {
-					state[maskName] = (masks[maskName] & full); // & inner would be the same since the masks are all for the inner rect
-					//precalculate moving this masked bit to the place it needs to be for neighbor use
-					if (maskNeighborOffsetNegative[maskName] == 1) {
-						state[maskName] >>= maskNeighborOffsets[maskName]
-					} else {
-						state[maskName] <<= maskNeighborOffsets[maskName];
-					}
-				}
-				states[inner] = state;
-			}
-			cache[cacheIdx] = inner;
-			++cacheIdx;
-		}
-		
+
 		private function onLoadComplete(e : Event) : void {
 			trace("file loaded");
 			jsonDecoder = new JSONDecoderAsync(e.target.data, true);
@@ -670,7 +500,7 @@ package {
 				}
 			} else if (binaryData != null && uncompress) {
 				try {
-					binaryData.uncompress();
+                    cacheDataBinaryLoader = new CacheDataBinaryLoader(binaryData);
 					uncompress = false;
 				} catch (e : Error) {
 					trace("loading file");
@@ -683,36 +513,8 @@ package {
 				}
 			} else if (binaryData != null) {
 				try {
-					if (cacheLoadIdx == 0) {
-						binaryData.readUnsignedInt();//CACHE_WIDTH
-						binaryData.readUnsignedInt();//CACHE_HEIGHT
-						cache = new Vector.<uint>(binaryData.readUnsignedInt(), true);
-					}
-					if (cacheLoadIdx < cache.length) {
-						for (i = 0; i < 120000 && cacheLoadIdx < cache.length; ++i) {
-							cache[cacheLoadIdx] = binaryData.readUnsignedInt();
-							++cacheLoadIdx;
-						}
-						/*
-						for (var i : uint = 0; i < cache.length; ++i) {
-							cache[i] = binaryData.readUnsignedInt();
-						}
-						*/
-					} else {
-						if (stateLoadIdx == 0) {
-							states = new Vector.<Chunk>(binaryData.readUnsignedInt(), true);
-						}
-						if (stateLoadIdx < states.length) {
-							for (i = 0; i < 120000 && stateLoadIdx < states.length; ++i) {
-								if (binaryData.readBoolean()) {
-									states[binaryData.readUnsignedInt()] = Chunk.read(binaryData, CACHE_WIDTH, CACHE_HEIGHT);
-								}
-								++stateLoadIdx;
-							}
-						} else {
-							loaded = true;
-						}
-					}
+                    cacheData = cacheDataBinaryLoader.loadNext();
+                    loaded = (cacheData != null)
 				} catch (e : Error) {
 					if (lso != null) {
 						lso.data.bin = null;
@@ -770,8 +572,10 @@ package {
 			}
 			
 			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
-			drawProgressBar(cacheLoadIdx, cache.length, PROGRESS_Y + 22);
-			drawProgressBar(stateLoadIdx, states.length, PROGRESS_Y + 44);
+            if (cacheDataBinaryLoader != null) {
+			    drawProgressBar(cacheDataBinaryLoader.cacheLoadIdx, cacheDataBinaryLoader.cacheLoadMax, PROGRESS_Y + 22);
+			    drawProgressBar(cacheDataBinaryLoader.stateLoadIdx, cacheDataBinaryLoader.stateLoadMax, PROGRESS_Y + 44);
+            }
 			/*
 			graphics.beginBitmapFill(fpsbd);
 			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
@@ -779,13 +583,14 @@ package {
 			*/
 			if (loaded) {
 				trace("Loading time: " + ((getTimer() - loadStartTime) / 1000).toFixed(2) + "s");
-				
+				cacheDataBinaryLoader = null;
+                
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				addEventListener(Event.ENTER_FRAME, resetListener);
 				enterFrameListener = resetListener;
 			}
 		}
-		
+		/*
 		private function loadListener(e : Event) : void {
 			//bitmapData2.fillRect(bitmapData2.rect, 0x0);
 			bitmapData.fillRect(bitmapData.rect, 0);
@@ -816,7 +621,7 @@ package {
 					cache[cacheLoadIdx] = loadedDataObject.cache[cacheLoadIdx];
 					++cacheLoadIdx;
 					}
-					*/
+					* /
 				} else if (stateLoadIdx < states.length) {
 					//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
 					for (i = 0; i < 60000 && stateLoadIdx < states.length; ++i) {
@@ -841,7 +646,7 @@ package {
 			graphics.beginBitmapFill(fpsbd);
 			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
 			graphics.endFill();
-			*/
+			* /
 			if (loaded) {
 				trace("Loading time: " + ((getTimer() - loadStartTime) / 1000).toFixed(2) + "s");
 				
@@ -850,7 +655,7 @@ package {
 				enterFrameListener = resetListener;
 			}
 		}
-		
+		*/
 		private function resetListener(e : Event) : void {
 			if (preBitmap.parent != null) {
 				preBitmap.parent.removeChild(preBitmap);
@@ -870,14 +675,14 @@ package {
 					for (y = 1; y < CHUNKED_HEIGHT - 1; ++y) {
 						yo = FULL_CHUNKED_WIDTH * y;
 						for (x = 1; x < CHUNKED_WIDTH - 1; ++x) {
-							currentStates[x + yo] = masks.inner & uint(Math.random() * uint.MAX_VALUE);
+							currentStates[x + yo] = cacheData.masks.inner & uint(Math.random() * uint.MAX_VALUE);
 						}
 					}
 					break;
 				case 1:
-					var m : uint = 7 << (FULL_CACHE_WIDTH + 1);
-					for (y = 2; y < FULL_CACHE_HEIGHT - 1; ++y) {
-						m |= 1 << (FULL_CACHE_WIDTH * y + 1);
+					var m : uint = 7 << (cacheData.FULL_CACHE_WIDTH + 1);
+					for (y = 2; y < cacheData.FULL_CACHE_HEIGHT - 1; ++y) {
+						m |= 1 << (cacheData.FULL_CACHE_WIDTH * y + 1);
 					}
 					for (y = 1; y < CHUNKED_HEIGHT - 1; y+=2) {
 						yo = FULL_CHUNKED_WIDTH * y;
@@ -891,7 +696,7 @@ package {
 					for (y = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
 						yo = FULL_CHUNKED_WIDTH * y;
 						for (x = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
-							currentStates[x + yo] = masks.inner;
+							currentStates[x + yo] = cacheData.masks.inner;
 						}
 					}
 					break;
@@ -940,7 +745,7 @@ package {
 			if (preBitmap.parent == null) {
 				generateStartTime = getTimer();
 				preBitmap.x = 10;
-				postBitmap.x = 40 + FULL_CACHE_WIDTH * 10;
+				postBitmap.x = 40 + cacheData.FULL_CACHE_WIDTH * 10;
 				preBitmap.y = postBitmap.y = 10;
 				preBitmap.scaleX = postBitmap.scaleX
 					= preBitmap.scaleY = postBitmap.scaleY = 10;
@@ -950,40 +755,41 @@ package {
 			preBitmapData.fillRect(preBitmapData.rect, 0x0);
 			postBitmapData.fillRect(postBitmapData.rect, 0x0);
 			var i : uint = 0;
-			while (i < CACHE_COMPUTATIONS_PER_FRAME && cacheIdx < NUM_CACHE_PERMUTATIONS) {
-				fillCache();
+            var more : Boolean = true;
+			while (i < CACHE_COMPUTATIONS_PER_FRAME && more) {
+				more = cacheData.calculateNext();
 				++i;
 			}
-			preBitmapData.setVector(preBitmapData.rect, currentStates);
+			preBitmapData.setVector(preBitmapData.rect, cacheData.currentStates);
 			//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
 			//bitmapData.setVector(cacheRect, currentStates);
 			//draw(c, cacheRect, cacheMat, 10, 10);
-			postBitmapData.setVector(postBitmapData.rect, nextStates);
+			postBitmapData.setVector(postBitmapData.rect, cacheData.nextStates);
 			//draw(nextStates, cacheRect2, cacheMat);
 			
 			bitmapData.fillRect(bitmapData.rect, 0x0);
 			
-			drawProgressBar(cacheIdx, NUM_CACHE_PERMUTATIONS, PROGRESS_Y);
+			drawProgressBar(cacheData.cacheIdx, cacheData.NUM_CACHE_PERMUTATIONS, PROGRESS_Y);
 			
-			DText.draw(bitmapData, String(cacheIdx - 1), 10 + 10 * FULL_CACHE_WIDTH / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
-			DText.draw(bitmapData, String((cacheIdx - 1) & masks.inner), 10 + 10 * FULL_CACHE_WIDTH / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String(cacheData.cacheIdx - 1), 10 + 10 * cacheData.FULL_CACHE_WIDTH / 2, 15 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String((cacheData.cacheIdx - 1) & cacheData.masks.inner), 10 + 10 * cacheData.FULL_CACHE_WIDTH / 2, 35 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
 			
-			DText.draw(bitmapData, String(full), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
-			DText.draw(bitmapData, String(inner), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String(cacheData.full), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
+			DText.draw(bitmapData, String(cacheData.inner), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
 			/*
 			graphics.beginBitmapFill(bitmapData);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
 			*/
 
-			if (cacheIdx == NUM_CACHE_PERMUTATIONS) {
+			if (!more) {
 				trace("Generation time: " + Number((getTimer() - generateStartTime) / 1000).toFixed(2) + "s");
 				dataString = 
 					"{\n" +
 					'    "width": ' + CACHE_WIDTH + ",\n" +
 					'    "height": ' + CACHE_HEIGHT + ",\n" +
-					'    "cache": [' + cache + "],\n" +
-					'    "states": [' + states + "]\n" +
+					'    "cache": [' + cacheData.cache + "],\n" +
+					'    "states": [' + cacheData.states + "]\n" +
 					'}';
 				/*
 				dataString = 
@@ -1025,7 +831,7 @@ package {
 				point.y
 					= int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
 				//bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
-				bitmapData.copyPixels(states[currentStates[i]].bitmapData, chunkRect, point);
+				bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, point);
 			}
 			bitmapData.unlock();
 		}
@@ -1052,17 +858,17 @@ package {
 
 				upIdx = i - FULL_CHUNKED_WIDTH;
 				downIdx = i + FULL_CHUNKED_WIDTH;
-				nextStates[i] = cache[
+				nextStates[i] = cacheData.cache[
 					currentStates[i]
-					| states[currentStates[upIdx]].bottom
-					| states[currentStates[downIdx]].top
-					| states[currentStates[i - 1]].right
-					| states[currentStates[i + 1]].left
+					| cacheData.states[currentStates[upIdx]].bottom
+					| cacheData.states[currentStates[downIdx]].top
+					| cacheData.states[currentStates[i - 1]].right
+					| cacheData.states[currentStates[i + 1]].left
 					
-					| states[currentStates[upIdx - 1]].bottomRight
-					| states[currentStates[upIdx + 1]].bottomLeft
-					| states[currentStates[downIdx - 1]].topRight
-					| states[currentStates[downIdx + 1]].topLeft
+					| cacheData.states[currentStates[upIdx - 1]].bottomRight
+					| cacheData.states[currentStates[upIdx + 1]].bottomLeft
+					| cacheData.states[currentStates[downIdx - 1]].topRight
+					| cacheData.states[currentStates[downIdx + 1]].topLeft
 				];
 				if (currentStates[i] ^ nextStates[i]) {
 					//chunkRect.x
@@ -1072,10 +878,10 @@ package {
 					point.y
 						= int(int(i) / int(FULL_CHUNKED_WIDTH)) * CACHE_HEIGHT;
 					//bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
-					bitmapData.copyPixels(states[nextStates[i]].bitmapData, chunkRect, point);
+					bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, point);
 
-					currentState = states[currentStates[i]];
-					nextState = states[nextStates[i]];
+					currentState = cacheData.states[currentStates[i]];
+					nextState = cacheData.states[nextStates[i]];
 					nextChunksToCheck[i] = true;
 					if (currentState.bottom ^ nextState.bottom) {
 						nextChunksToCheck[downIdx] = true;
@@ -1130,45 +936,7 @@ package {
 			tmpStates = currentStates;
 			currentStates = nextStates;
 			nextStates = tmpStates;
-			nextFromPrev(currentStates, nextStates, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-		}
-		
-		private function nextFromPrev(c : Vector.<uint>, n : Vector.<uint>, W : uint, H : uint) : void {
-			for (var x : uint = 0; x < W; ++x) {
-				for (var y : uint = 0; y < H; ++y) {
-					var na : uint = 0;
-					
-					var mx : uint = Math.min(W, x + 2);
-					var my : uint = Math.min(H, y + 2);
-					
-					check: for (var yi : uint = Math.max(0, y - 1); yi < my; ++yi) {
-						var yo : uint = yi * W;
-						for (var xi : uint = Math.max(0, x - 1); xi < mx; ++xi) {
-							if ((xi != x || yi != y) && c[xi + yo] == ALIVE_PIXEL) {
-								++na;
-								if (na == 4) {
-									break check;
-								}
-							}
-						}
-					}
-					
-					switch (na) {
-						case 0:
-						case 1:
-						case 4:
-							n[x + y * W] = DEAD_PIXEL;
-							break;
-						case 2:
-							var i : uint = x + y * W;
-							n[i] = c[i];
-							break;
-						case 3:
-							n[x + y * W] = ALIVE_PIXEL;
-							break;
-					}
-				}
-			}
+            CacheData.nextFromPrev(currentStates, nextStates, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 		}
 
 		private function draw(vec : Vector.<uint>, rect : Rectangle, mat : Matrix = null) : void {
