@@ -137,7 +137,8 @@ package {
                 point.y
                     = int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT;
                 //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
-                bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, point);
+                cacheData.drawState(currentStates[i], bitmapData, chunkRect, point);
+                //bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, point);
             }
             bitmapData.unlock();
         }
@@ -164,7 +165,7 @@ package {
                 
                 upIdx = i - FULL_CHUNKED_WIDTH;
                 downIdx = i + FULL_CHUNKED_WIDTH;
-                nextStates[i] = cacheData.cache[
+                nextStates[i] = cacheData.getNextState(
                     currentStates[i]
                     | cacheData.states[currentStates[upIdx]].bottom
                     | cacheData.states[currentStates[downIdx]].top
@@ -175,7 +176,7 @@ package {
                     | cacheData.states[currentStates[upIdx + 1]].bottomLeft
                     | cacheData.states[currentStates[downIdx - 1]].topRight
                     | cacheData.states[currentStates[downIdx + 1]].topLeft
-                ];
+                );
                 if (currentStates[i] ^ nextStates[i]) {
                     //chunkRect.x
                     point.x
@@ -184,7 +185,8 @@ package {
                     point.y
                         = int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT;
                     //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
-                    bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, point);
+                    cacheData.drawState(nextStates[i], bitmapData, chunkRect, point);
+                    //bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, point);
                     
                     currentState = cacheData.states[currentStates[i]];
                     nextState = cacheData.states[nextStates[i]];

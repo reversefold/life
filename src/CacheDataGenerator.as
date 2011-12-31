@@ -3,25 +3,26 @@ package {
 
     public class CacheDataGenerator {
         public var cacheData : CacheData;
-        
-        public var currentStates : Vector.<uint>;
-        public var nextStates : Vector.<uint>;
+
+        public var currentState : Vector.<uint>;
+        public var nextState : Vector.<uint>;
         public var cacheIdx : uint = 0;
         public var full : uint;
         public var inner : uint;
-        
+
         public function CacheDataGenerator(inCacheData : CacheData) {
             cacheData = inCacheData;
-            
-            currentStates = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
-            nextStates = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
+
+            currentState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
+            nextState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
         }
-        
-        public function calculateNext() : Boolean {
-            uintToVec(cacheIdx, currentStates);
-            nextFromPrev(currentStates, nextStates, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
-            full = vecToUint(nextStates);
-            
+
+        public function calculateNextState(stateIdx : uint) : void {
+            uintToVec(stateIdx, currentState);
+            nextFromPrev(currentState, nextState, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
+            full = vecToUint(nextState);
+            var i : uint;
+            /** /
             if (cacheIdx > 1000000) {
                 var topFlip : uint = 0;
                 var ROW_MASK : uint = 0;
@@ -30,7 +31,6 @@ package {
                 }
                 trace("cacheIdx");
                 _traceMask(cacheIdx);
-                var i : uint;
                 for (i = 0; i < cacheData.CACHE_VECTOR_LENGTH; i += cacheData.FULL_CACHE_WIDTH) {
                     var flipBits : int = (cacheData.CACHE_VECTOR_LENGTH - 2 * i - cacheData.FULL_CACHE_WIDTH);
                     if (flipBits >= 0) {
@@ -42,52 +42,62 @@ package {
                 trace("topFlip");
                 _traceMask(topFlip);
             }
-            
+            /**/
             inner = full & cacheData.masks.inner;
+            cacheData.cache[stateIdx] = inner;
             if (cacheData.states[inner] == null) {
-                var innerVector : Vector.<uint> = new Vector.<uint>(cacheData.INNER_CACHE_VECTOR_LENGTH, true);
-                i = 0;
-                for (var y : uint = 1; y <= cacheData.CACHE_HEIGHT; ++y) {
-                    var yo : uint = y * cacheData.FULL_CACHE_WIDTH;
-                    for (var x : uint = 1; x <= cacheData.CACHE_WIDTH; ++x) {
-                        innerVector[i] = (full & (1 << x + yo)) ? Life.ALIVE_PIXEL : Life.DEAD_PIXEL;
-                        ++i;
-                    }
-                }
-                var state : Chunk = new Chunk(cacheData.CACHE_WIDTH, cacheData.CACHE_HEIGHT);
-                state.setVector(innerVector);
-                for each (var maskName : String in cacheData.maskNames) {
-                    state[maskName] = (cacheData.masks[maskName] & full); // & inner would be the same since the masks are all for the inner rect
-                    //precalculate moving this masked bit to the place it needs to be for neighbor use
-                    if (cacheData.maskNeighborOffsetNegative[maskName] == 1) {
-                        state[maskName] >>= cacheData.maskNeighborOffsets[maskName]
-                    } else {
-                        state[maskName] <<= cacheData.maskNeighborOffsets[maskName];
-                    }
-                }
-                cacheData.states[inner] = state;
+                calculateState(inner);
             }
-            cacheData.cache[cacheIdx] = inner;
-            ++cacheIdx;
-            
-            return cacheIdx < cacheData.NUM_CACHE_PERMUTATIONS;
         }
         
-        private function traceMask(maskName : String) : void {
+        public function calculateState(inner : uint) : void {
+            //stateIdx &= cacheData.masks.inner;
+            //inner = stateIdx & cacheData.masks.inner;
+            var innerVector : Vector.<uint> = new Vector.<uint>(cacheData.INNER_CACHE_VECTOR_LENGTH, true);
+            var i : uint = 0;
+            for (var y : uint = 1; y <= cacheData.CACHE_HEIGHT; ++y) {
+                var yo : uint = y * cacheData.FULL_CACHE_WIDTH;
+                for (var x : uint = 1; x <= cacheData.CACHE_WIDTH; ++x) {
+                    innerVector[i] = (inner & (1 << x + yo)) ? Life.ALIVE_PIXEL : Life.DEAD_PIXEL;
+                    ++i;
+                }
+            }
+            var state : Chunk = new Chunk(cacheData.CACHE_WIDTH, cacheData.CACHE_HEIGHT);
+            state.setVector(innerVector);
+            for each (var maskName : String in cacheData.maskNames) {
+                state[maskName] = (cacheData.masks[maskName] & inner); // & full would be the same since the masks are all for the inner rect
+                //precalculate moving this masked bit to the place it needs to be for neighbor use
+                if (cacheData.maskNeighborOffsetNegative[maskName] == 1) {
+                    state[maskName] >>= cacheData.maskNeighborOffsets[maskName];
+                } else {
+                    state[maskName] <<= cacheData.maskNeighborOffsets[maskName];
+                }
+            }
+            cacheData.states[inner] = state;
+        }
+        
+        public function calculateNext() : Boolean {
+            calculateNextState(cacheIdx);
+            ++cacheIdx;
+
+            return cacheIdx < cacheData.NUM_CACHE_PERMUTATIONS;
+        }
+
+        public function traceMask(maskName : String) : void {
             trace(maskName);
             _traceMask(cacheData.masks[maskName]);
         }
-        
-        private function _traceMask(mask : uint) : void {
+
+        public function _traceMask(mask : uint) : void {
             var str : String = mask.toString(2);
             trace((StringUtil.repeat("0", cacheData.FULL_CACHE_WIDTH * cacheData.FULL_CACHE_HEIGHT - str.length) + str)
-                .split('')
-                .reverse()
-                .join(" ")
-                .split(new RegExp("(" + StringUtil.repeat(". ", cacheData.FULL_CACHE_WIDTH) + ")"))
-                .join("\n ")
-                .replace(/\n \n/g, "\n")
-                .substr(1));
+                  .split('')
+                  .reverse()
+                  .join(" ")
+                  .split(new RegExp("(" + StringUtil.repeat(". ", cacheData.FULL_CACHE_WIDTH) + ")"))
+                  .join("\n ")
+                  .replace(/\n \n/g, "\n")
+                  .substr(1));
             /*
             var line : String = maskName;
             for (var i : uint = 0; i < len; ++i) {
@@ -100,16 +110,16 @@ package {
             trace(line);
             */
         }
-        
-        
+
+
         public static function nextFromPrev(c : Vector.<uint>, n : Vector.<uint>, W : uint, H : uint) : void {
             for (var x : uint = 0; x < W; ++x) {
                 for (var y : uint = 0; y < H; ++y) {
                     var na : uint = 0;
-                    
+
                     var mx : uint = Math.min(W, x + 2);
                     var my : uint = Math.min(H, y + 2);
-                    
+
                     check: for (var yi : uint = Math.max(0, y - 1); yi < my; ++yi) {
                         var yo : uint = yi * W;
                         for (var xi : uint = Math.max(0, x - 1); xi < mx; ++xi) {
@@ -121,7 +131,7 @@ package {
                             }
                         }
                     }
-                    
+
                     switch (na) {
                         case 0:
                         case 1:
@@ -142,13 +152,13 @@ package {
                 }
             }
         }
-        
+
         public static function uintToVec(i : uint, vec : Vector.<uint>) : void {
             for (var idx : uint = 0; idx < vec.length; ++idx) {
                 vec[idx] = ((i >> idx) & 0x1) == 0x1 ? Life.ALIVE_PIXEL : Life.DEAD_PIXEL;
             }
         }
-        
+
         public static function vecToUint(vec : Vector.<uint>) : uint {
             var i : uint = 0;
             for (var idx : uint = 0; idx < vec.length; ++idx) {

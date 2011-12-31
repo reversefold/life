@@ -56,7 +56,8 @@ package {
 		public static const REQUESTED_HEIGHT : uint = 1500;
 		*/
 		
-		public static const LOAD : Boolean = true;
+        public static const ON_DEMAND : Boolean = true;
+		public static const LOAD : Boolean = false;
 		public static const LOAD_JSON : Boolean = false;
 		
 		public static const CACHE_COMPUTATIONS_PER_FRAME : uint = 1000;
@@ -66,7 +67,7 @@ package {
 		
 		public static const PROGRESS_Y : uint = 300;
 		
-		public static var fpsBitmapData : BitmapData = new BitmapData(100, 50, true);
+		public static var fpsBitmapData : BitmapData = new BitmapData(100, 100, true);
 		public static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
 
 		public static var sizeBitmapData : BitmapData = new BitmapData(100, 20, true);
@@ -358,7 +359,7 @@ package {
 				sizeBitmap.parent.removeChild(sizeBitmap);
 			}
 			sizeBitmap.x = lifeState.DISPLAY_WIDTH - sizeBitmap.width;
-			sizeBitmap.y = 50;
+			sizeBitmap.y = fpsBitmap.height;
 			addChild(sizeBitmap);
 
             drawSize();
@@ -396,8 +397,11 @@ package {
 					addEventListener(Event.ENTER_FRAME, loadBinaryListener);
 					enterFrameListener = loadBinaryListener;
 				//}
+            } else if (ON_DEMAND) {
+                addEventListener(Event.ENTER_FRAME, resetListener);
+                enterFrameListener = resetListener;
 			} else {
-                cacheDataGenerator = new CacheDataGenerator(cacheData);
+                cacheDataGenerator = cacheData.generator;
 				addEventListener(Event.ENTER_FRAME, generateListener);
 				enterFrameListener = generateListener;
 			}
@@ -686,11 +690,11 @@ package {
 				more = cacheDataGenerator.calculateNext();
 				++i;
 			}
-			preBitmapData.setVector(preBitmapData.rect, cacheDataGenerator.currentStates);
+			preBitmapData.setVector(preBitmapData.rect, cacheDataGenerator.currentState);
 			//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
 			//bitmapData.setVector(cacheRect, currentStates);
 			//draw(c, cacheRect, cacheMat, 10, 10);
-			postBitmapData.setVector(postBitmapData.rect, cacheDataGenerator.nextStates);
+			postBitmapData.setVector(postBitmapData.rect, cacheDataGenerator.nextState);
 			//draw(nextStates, cacheRect2, cacheMat);
 			
 			lifeState.bitmapData.fillRect(lifeState.bitmapData.rect, 0x0);
@@ -798,10 +802,18 @@ package {
 			*/
 		}
 		
+        private var prevNumGenerated : uint = 0;
 		private function drawFPS(e : Event = null) : void {
 			fpsBitmapData.lock();
 			fpsBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);
-			DText.draw(fpsBitmapData, FPSCounter.update(), fpsBitmapData.width - 1, 0, DText.RIGHT);
+			DText.draw(fpsBitmapData,
+                FPSCounter.update() + "\n"
+                + cacheData.numGenerated + "\n"
+                + (cacheData.numGenerated - prevNumGenerated) + "\n"
+                + cacheData.numHits,
+                fpsBitmapData.width - 1, 0, DText.RIGHT);
+            prevNumGenerated = cacheData.numGenerated;
+            cacheData.numHits = 0;
 			fpsBitmapData.unlock();
 			/** /
 			graphics.beginBitmapFill(fpsbd);
@@ -809,6 +821,7 @@ package {
 			graphics.endFill();
 			/**/
 		}
+        
 		private function drawSize(e : Event = null) : void {
 			sizeBitmapData.lock();
 			sizeBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);

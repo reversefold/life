@@ -1,8 +1,11 @@
 package {
+    import flash.display.BitmapData;
+    import flash.geom.Point;
+    import flash.geom.Rectangle;
     import flash.net.FileReference;
     import flash.utils.ByteArray;
     import flash.utils.describeType;
-
+    
     import mx.utils.StringUtil;
 
     public class CacheData {
@@ -25,6 +28,11 @@ package {
         public var cache : Vector.<uint>;
         public var states : Vector.<Chunk>;
 
+        public var generator : CacheDataGenerator;
+        
+        public var numGenerated : uint = 0;
+        public var numHits : uint = 0;
+
         public function CacheData(inWidth : uint, inHeight : uint) {
             CACHE_WIDTH = inWidth;
             CACHE_HEIGHT = inHeight;
@@ -35,6 +43,9 @@ package {
             NUM_CACHE_PERMUTATIONS = Math.pow(2, CACHE_VECTOR_LENGTH);
 
             cache = new Vector.<uint>(NUM_CACHE_PERMUTATIONS, true);
+            for (var i : uint = 0; i < cache.length; ++i) {
+                cache[i] = uint.MAX_VALUE;
+            }
             states = new Vector.<Chunk>(Math.pow(2, CACHE_VECTOR_LENGTH - FULL_CACHE_WIDTH - 1), true);
             
             masks = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
@@ -60,7 +71,6 @@ package {
             }
             masks.bottom = masks.top;
 
-            var i : uint = 0;
             for (var y : uint = 0; y < CACHE_HEIGHT; ++y, i += FULL_CACHE_WIDTH) {
                 masks.left |= 1 << i;
             }
@@ -90,6 +100,28 @@ package {
                 traceMask(maskName);
             }
             */
+            
+            generator = new CacheDataGenerator(this);
+        }
+        
+        public function getNextState(state : uint) : uint {
+            if (cache[state] == uint.MAX_VALUE) {
+                ++numGenerated;
+                generator.calculateNextState(state);
+            } else {
+                ++numHits;
+            }
+            return cache[state];
+        }
+        
+        public function drawState(state : uint, bitmapData : BitmapData, chunkRect : Rectangle, point : Point) : void {
+            if (states[state] == null) {
+                ++numGenerated;
+                generator.calculateState(state);
+            } else {
+                ++numHits;
+            }
+            bitmapData.copyPixels(states[state].bitmapData, chunkRect, point);
         }
     }
 }
