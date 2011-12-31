@@ -67,7 +67,7 @@ package {
 		
 		public static const PROGRESS_Y : uint = 300;
 		
-		public static var fpsBitmapData : BitmapData = new BitmapData(100, 100, true);
+		public static var fpsBitmapData : BitmapData = new BitmapData(100, 80, true);
 		public static var fpsBitmap : Bitmap = new Bitmap(fpsBitmapData);
 
 		public static var sizeBitmapData : BitmapData = new BitmapData(100, 20, true);
