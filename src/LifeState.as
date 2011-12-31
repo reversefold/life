@@ -137,6 +137,9 @@ package {
                 point.y
                     = int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT;
                 //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
+                if (cacheData.states[currentStates[i]] == null) {
+                    cacheData.generator.calculateState(currentStates[i]);
+                }
                 cacheData.drawState(currentStates[i], bitmapData, chunkRect, point);
                 //bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, point);
             }

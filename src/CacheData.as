@@ -115,12 +115,14 @@ package {
         }
         
         public function drawState(state : uint, bitmapData : BitmapData, chunkRect : Rectangle, point : Point) : void {
+            /*
             if (states[state] == null) {
                 ++numGenerated;
                 generator.calculateState(state);
             } else {
                 ++numHits;
             }
+            */
             bitmapData.copyPixels(states[state].bitmapData, chunkRect, point);
         }
     }
