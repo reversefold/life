@@ -690,11 +690,11 @@ package {
 				more = cacheDataGenerator.calculateNext();
 				++i;
 			}
-			preBitmapData.setVector(preBitmapData.rect, cacheDataGenerator.currentState);
+			preBitmapData.setVector(preBitmapData.rect, CacheDataGenerator.uintToVecRet(cacheDataGenerator.cacheIdx, cacheData.CACHE_VECTOR_LENGTH));
 			//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
 			//bitmapData.setVector(cacheRect, currentStates);
 			//draw(c, cacheRect, cacheMat, 10, 10);
-			postBitmapData.setVector(postBitmapData.rect, cacheDataGenerator.nextState);
+			postBitmapData.setVector(postBitmapData.rect, CacheDataGenerator.uintToVecRet(cacheData.getNextState(cacheDataGenerator.cacheIdx), cacheData.CACHE_VECTOR_LENGTH));
 			//draw(nextStates, cacheRect2, cacheMat);
 			
 			lifeState.bitmapData.fillRect(lifeState.bitmapData.rect, 0x0);
@@ -747,7 +747,7 @@ package {
 			var tmpStates : Vector.<uint> = lifeState.currentStates;
             lifeState.currentStates = lifeState.nextStates;
             lifeState.nextStates = tmpStates;
-            CacheDataGenerator.nextFromPrev(lifeState.currentStates, lifeState.nextStates, lifeState.DISPLAY_WIDTH, lifeState.DISPLAY_HEIGHT);
+            CacheDataGenerator.nextFromPrevVector(lifeState.currentStates, lifeState.nextStates, lifeState.DISPLAY_WIDTH, lifeState.DISPLAY_HEIGHT);
 		}
 
 		private function draw(vec : Vector.<uint>, rect : Rectangle, mat : Matrix = null) : void {

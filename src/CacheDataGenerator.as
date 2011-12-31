@@ -4,8 +4,8 @@ package {
     public class CacheDataGenerator {
         public var cacheData : CacheData;
 
-        public var currentState : Vector.<uint>;
-        public var nextState : Vector.<uint>;
+        //public var currentState : Vector.<uint>;
+        //public var nextState : Vector.<uint>;
         public var cacheIdx : uint = 0;
         public var full : uint;
         public var inner : uint;
@@ -13,16 +13,20 @@ package {
         public function CacheDataGenerator(inCacheData : CacheData) {
             cacheData = inCacheData;
 
-            currentState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
-            nextState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
+            //currentState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
+            //nextState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
         }
 
         public function calculateNextState(stateIdx : uint) : void {
+            /*
             uintToVec(stateIdx, currentState);
-            nextFromPrev(currentState, nextState, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
+            nextFromPrevVector(currentState, nextState, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
             full = vecToUint(nextState);
-            var i : uint;
+            */
+            full = nextFromPrev(stateIdx, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
+            
             /** /
+            var i : uint;
             if (cacheIdx > 1000000) {
                 var topFlip : uint = 0;
                 var ROW_MASK : uint = 0;
@@ -111,8 +115,55 @@ package {
             */
         }
 
+        public static function nextFromPrev(c : uint, W : uint, H : uint) : uint {
+            var n : uint = 0;
+            for (var x : uint = 0; x < W; ++x) {
+                for (var y : uint = 0; y < H; ++y) {
+                    var na : uint = 0;
+                    
+                    var mx : uint = Math.min(W, x + 2);
+                    var my : uint = Math.min(H, y + 2);
+                    
+                    check: for (var yi : uint = Math.max(0, y - 1); yi < my; ++yi) {
+                        var yo : uint = yi * W;
+                        for (var xi : uint = Math.max(0, x - 1); xi < mx; ++xi) {
+                            if ((xi != x || yi != y) && (c >> (xi + yo) & 0x1)) {
+                                ++na;
+                                if (na == 4) {
+                                    break check;
+                                }
+                            }
+                        }
+                    }
+                    
+                    switch (na) {
+                        //dead = 0, leave it
+                        /*
+                        case 0:
+                        case 1:
+                        case 4:  {
+                            n &= uint.MAX_VALUE ^ (0x1 >> (x + y * W));
+                            break;
+                        }
+                        */
+                        //stays the same
+                        case 2:  {
+                            n |= c & (0x1 << (x + y * W));
+                            break;
+                        }
+                        //born
+                        case 3:  {
+                            n |= 0x1 << (x + y * W);
+                            break;
+                        }
+                    }
+                }
+            }
 
-        public static function nextFromPrev(c : Vector.<uint>, n : Vector.<uint>, W : uint, H : uint) : void {
+            return n;
+        }
+
+        public static function nextFromPrevVector(c : Vector.<uint>, n : Vector.<uint>, W : uint, H : uint) : void {
             for (var x : uint = 0; x < W; ++x) {
                 for (var y : uint = 0; y < H; ++y) {
                     var na : uint = 0;
@@ -157,6 +208,12 @@ package {
             for (var idx : uint = 0; idx < vec.length; ++idx) {
                 vec[idx] = ((i >> idx) & 0x1) == 0x1 ? Life.ALIVE_PIXEL : Life.DEAD_PIXEL;
             }
+        }
+        
+        public static function uintToVecRet(i : uint, vectorLength : uint) : Vector.<uint> {
+            var v : Vector.<uint> = new Vector.<uint>(vectorLength, true);
+            uintToVec(i, v);
+            return v;
         }
 
         public static function vecToUint(vec : Vector.<uint>) : uint {
