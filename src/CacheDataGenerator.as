@@ -115,10 +115,15 @@ package {
             */
         }
 
+        /**
+         * Returns the next inner state for a full WxH chunk.
+         */
         public static function nextFromPrev(c : uint, W : uint, H : uint) : uint {
             var n : uint = 0;
-            for (var x : uint = 0; x < W; ++x) {
-                for (var y : uint = 0; y < H; ++y) {
+            var Wm : uint = W - 1;
+            var Hm : uint = H - 1;
+            for (var x : uint = 1; x < Wm; ++x) {
+                for (var y : uint = 1; y < Hm; ++y) {
                     var na : uint = 0;
                     
                     var mx : uint = Math.min(W, x + 2);
@@ -137,15 +142,6 @@ package {
                     }
                     
                     switch (na) {
-                        //dead = 0, leave it
-                        /*
-                        case 0:
-                        case 1:
-                        case 4:  {
-                            n &= uint.MAX_VALUE ^ (0x1 >> (x + y * W));
-                            break;
-                        }
-                        */
                         //stays the same
                         case 2:  {
                             n |= c & (0x1 << (x + y * W));
