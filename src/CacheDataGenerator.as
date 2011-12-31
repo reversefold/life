@@ -9,12 +9,41 @@ package {
         public var cacheIdx : uint = 0;
         public var full : uint;
         public var inner : uint;
+        
+        public var generationMasks : Vector.<uint>;
+        public var generationBits : Vector.<uint>;
 
         public function CacheDataGenerator(inCacheData : CacheData) {
             cacheData = inCacheData;
 
             //currentState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
             //nextState = new Vector.<uint>(cacheData.CACHE_VECTOR_LENGTH, true);
+            
+            generationMasks = new Vector.<uint>(cacheData.CACHE_WIDTH * cacheData.CACHE_HEIGHT, true);
+            generationBits = new Vector.<uint>(cacheData.CACHE_WIDTH * cacheData.CACHE_HEIGHT, true);
+            var i : uint = 0;
+            var x : uint;
+            var y : uint;
+            var m : uint = 0;
+            for (x = 0; x < 3; ++x) {
+                for (y = 0; y < 3; ++y) {
+                    m |= 0x1 << (y * cacheData.FULL_CACHE_WIDTH + x);
+                }
+            }
+            //trace("m");
+            //_traceMask(m);
+            
+            var Wm : uint = cacheData.FULL_CACHE_WIDTH - 1;
+            var Hm : uint = cacheData.FULL_CACHE_HEIGHT - 1;
+            for (x = 1; x < Wm; ++x) {
+                for (y = 1; y < Hm; ++y) {
+                    generationMasks[i] = m << ((y - 1) * cacheData.FULL_CACHE_WIDTH + (x - 1));
+                    generationBits[i] = 0x1 << (y * cacheData.FULL_CACHE_WIDTH + x);
+                    //trace(i);
+                    //_traceMask(generationMasks[i]);
+                    ++i;
+                }
+            }
         }
 
         public function calculateNextState(stateIdx : uint) : void {
@@ -118,8 +147,33 @@ package {
         /**
          * Returns the next inner state for a full WxH chunk.
          */
-        public static function nextFromPrev(c : uint, W : uint, H : uint) : uint {
+        public function nextFromPrev(c : uint, W : uint, H : uint) : uint {
             var n : uint = 0;
+            
+            for (var i : uint = 0; i < generationMasks.length; ++i) {
+                var masked : uint = c & generationMasks[i];
+                var na : uint;
+                for (na = 0; masked; ++na) {
+                    masked &= masked - 1; // clear the least significant bit set
+                }
+                if (c & generationBits[i]) {
+                    na -= 1;
+                }
+                switch (na) {
+                    //same as c
+                    case 2: {
+                        n |= c & generationBits[i];
+                        break;
+                    }
+                    //born
+                    case 3: {
+                        n |= generationBits[i];
+                        break;
+                    }
+                }
+            }
+
+            /** /
             var Wm : uint = W - 1;
             var Hm : uint = H - 1;
             for (var x : uint = 1; x < Wm; ++x) {
@@ -155,10 +209,11 @@ package {
                     }
                 }
             }
+            /**/
 
             return n;
         }
-
+        /*
         public static function nextFromPrevVector(c : Vector.<uint>, n : Vector.<uint>, W : uint, H : uint) : void {
             for (var x : uint = 0; x < W; ++x) {
                 for (var y : uint = 0; y < H; ++y) {
@@ -199,7 +254,7 @@ package {
                 }
             }
         }
-
+        */
         public static function uintToVec(i : uint, vec : Vector.<uint>) : void {
             for (var idx : uint = 0; idx < vec.length; ++idx) {
                 vec[idx] = ((i >> idx) & 0x1) == 0x1 ? Life.ALIVE_PIXEL : Life.DEAD_PIXEL;

@@ -665,12 +665,12 @@ package {
 			
 			//pause();
 		}
-		
+		/*
 		private function renderNaive(e : Event) : void {
 			nextFrame();
 			draw(lifeState.currentStates, lifeState.bitmapData.rect);
 		}
-		
+		*/
 		private function generateListener(e : Event) : void {
 			if (preBitmap.parent == null) {
 				generateStartTime = getTimer();
@@ -742,14 +742,14 @@ package {
 			graphics.endFill();
 			*/
 		}
-		
+		/*
 		private function nextFrame() : void {
 			var tmpStates : Vector.<uint> = lifeState.currentStates;
             lifeState.currentStates = lifeState.nextStates;
             lifeState.nextStates = tmpStates;
             CacheDataGenerator.nextFromPrevVector(lifeState.currentStates, lifeState.nextStates, lifeState.DISPLAY_WIDTH, lifeState.DISPLAY_HEIGHT);
 		}
-
+        */
 		private function draw(vec : Vector.<uint>, rect : Rectangle, mat : Matrix = null) : void {
 			//bd2.fillRect(bd2.rect, 0xFF000000);
 			//bd2.setVector(rect, vec);
