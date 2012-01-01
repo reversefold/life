@@ -85,15 +85,41 @@ package {
                 upIdx = i - FULL_CHUNKED_WIDTH;
                 downIdx = i + FULL_CHUNKED_WIDTH;
                 
-                neighbors.top = upIdx;
-                neighbors.bottom = downIdx;
-                neighbors.left = i - 1;
-                neighbors.right = i + 1;
-                
                 neighbors.topLeft = upIdx - 1;
                 neighbors.topRight = upIdx + 1;
                 neighbors.bottomLeft = downIdx - 1;
                 neighbors.bottomRight = downIdx + 1;
+                
+                var off : int;
+                
+                neighbors.top = upIdx;
+                if (neighbors.top < FULL_CHUNKED_WIDTH) {
+                    off = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH * 2;
+                    neighbors.top += off;
+                    neighbors.topLeft += off;
+                    neighbors.topRight += off;
+                }
+                neighbors.bottom = downIdx;
+                if (neighbors.bottom > FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH) {
+                    off = FULL_CHUNKED_WIDTH * 2 - FULL_CHUNKED_LENGTH;
+                    neighbors.bottom += off;
+                    neighbors.bottomLeft += off;
+                    neighbors.bottomRight += off;
+                }
+                neighbors.left = i - 1;
+                if (neighbors.left % FULL_CHUNKED_WIDTH == 0) {
+                    off = FULL_CHUNKED_WIDTH - 2;
+                    neighbors.left += off;
+                    neighbors.topLeft += off;
+                    neighbors.topRight += off;
+                }
+                neighbors.right = i + 1;
+                if ((neighbors.right + 1) % FULL_CHUNKED_WIDTH == 0) {
+                    off = FULL_CHUNKED_WIDTH - 2;
+                    neighbors.right -= off;
+                    neighbors.topRight -= off;
+                    neighbors.bottomRight -= off;
+                }
                 
                 stateNeighbors[i] = neighbors;
             }
