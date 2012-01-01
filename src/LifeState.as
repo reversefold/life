@@ -35,6 +35,7 @@ package {
         public var currentStates : Vector.<uint>;
         public var nextStates : Vector.<uint>;
         public var points : Vector.<Point>;
+        public var stateNeighbors : Vector.<Chunk>;
         
         public var currentChunksToCheck : Vector.<Boolean>;
         public var nextChunksToCheck : Vector.<Boolean>;
@@ -71,12 +72,30 @@ package {
             currentStates = new Vector.<uint>(FULL_CHUNKED_LENGTH, true);
             nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH, true);
             points = new Vector.<Point>(FULL_CHUNKED_LENGTH, true);
+            stateNeighbors = new Vector.<Chunk>(FULL_CHUNKED_LENGTH, true);
             
             for (var i : uint = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
                 points[i] = new Point(
                     i % FULL_CHUNKED_WIDTH * cacheData.CACHE_WIDTH,
                     int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT
                 );
+                
+                var neighbors : Chunk = new Chunk(0, 0);
+                
+                upIdx = i - FULL_CHUNKED_WIDTH;
+                downIdx = i + FULL_CHUNKED_WIDTH;
+                
+                neighbors.top = upIdx;
+                neighbors.bottom = downIdx;
+                neighbors.left = i - 1;
+                neighbors.right = i + 1;
+                
+                neighbors.topLeft = upIdx - 1;
+                neighbors.topRight = upIdx + 1;
+                neighbors.bottomLeft = downIdx - 1;
+                neighbors.bottomRight = downIdx + 1;
+                
+                stateNeighbors[i] = neighbors;
             }
             
             currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
@@ -179,6 +198,7 @@ package {
                     continue;
                 }
                 
+                /*
                 upIdx = i - FULL_CHUNKED_WIDTH;
                 downIdx = i + FULL_CHUNKED_WIDTH;
                 nextStates[i] = cacheData.getNextState(
@@ -192,6 +212,20 @@ package {
                     | cacheData.states[currentStates[upIdx + 1]].bottomLeft
                     | cacheData.states[currentStates[downIdx - 1]].topRight
                     | cacheData.states[currentStates[downIdx + 1]].topLeft
+                );
+                */
+                var neighbors : Chunk = stateNeighbors[i];
+                nextStates[i] = cacheData.getNextState(
+                    currentStates[i]
+                    | cacheData.states[currentStates[neighbors.top]].bottom
+                    | cacheData.states[currentStates[neighbors.bottom]].top
+                    | cacheData.states[currentStates[neighbors.left]].right
+                    | cacheData.states[currentStates[neighbors.right]].left
+                    
+                    | cacheData.states[currentStates[neighbors.topLeft]].bottomRight
+                    | cacheData.states[currentStates[neighbors.topRight]].bottomLeft
+                    | cacheData.states[currentStates[neighbors.bottomLeft]].topRight
+                    | cacheData.states[currentStates[neighbors.bottomRight]].topLeft
                 );
                 if (currentStates[i] ^ nextStates[i]) {
                     /*
@@ -212,6 +246,7 @@ package {
                     currentState = cacheData.states[currentStates[i]];
                     nextState = cacheData.states[nextStates[i]];
                     nextChunksToCheck[i] = true;
+                    /*
                     if (currentState.bottom ^ nextState.bottom) {
                         nextChunksToCheck[downIdx] = true;
                     }
@@ -235,6 +270,31 @@ package {
                     }
                     if (currentState.topRight ^ nextState.topRight) {
                         nextChunksToCheck[upIdx + 1] = true;
+                    }
+                    */
+                    if (currentState.bottom ^ nextState.bottom) {
+                        nextChunksToCheck[neighbors.bottom] = true;
+                    }
+                    if (currentState.top ^ nextState.top) {
+                        nextChunksToCheck[neighbors.top] = true;
+                    }
+                    if (currentState.left ^ nextState.left) {
+                        nextChunksToCheck[neighbors.left] = true;
+                    }
+                    if (currentState.right ^ nextState.right) {
+                        nextChunksToCheck[neighbors.right] = true;
+                    }
+                    if (currentState.bottomLeft ^ nextState.bottomLeft) {
+                        nextChunksToCheck[neighbors.bottomLeft] = true;
+                    }
+                    if (currentState.bottomRight ^ nextState.bottomRight) {
+                        nextChunksToCheck[neighbors.bottomRight] = true;
+                    }
+                    if (currentState.topLeft ^ nextState.topLeft) {
+                        nextChunksToCheck[neighbors.topLeft] = true;
+                    }
+                    if (currentState.topRight ^ nextState.topRight) {
+                        nextChunksToCheck[neighbors.topRight] = true;
                     }
                 }
                 /*
