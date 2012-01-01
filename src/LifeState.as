@@ -34,6 +34,7 @@ package {
 
         public var currentStates : Vector.<uint>;
         public var nextStates : Vector.<uint>;
+        public var points : Vector.<Point>;
         
         public var currentChunksToCheck : Vector.<Boolean>;
         public var nextChunksToCheck : Vector.<Boolean>;
@@ -67,8 +68,16 @@ package {
             
             chunkRect = new Rectangle(0, 0, cacheData.CACHE_WIDTH, cacheData.CACHE_HEIGHT);
 
-            currentStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
-            nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH);
+            currentStates = new Vector.<uint>(FULL_CHUNKED_LENGTH, true);
+            nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH, true);
+            points = new Vector.<Point>(FULL_CHUNKED_LENGTH, true);
+            
+            for (var i : uint = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+                points[i] = new Point(
+                    i % FULL_CHUNKED_WIDTH * cacheData.CACHE_WIDTH,
+                    int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT
+                );
+            }
             
             currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
             nextChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
@@ -130,17 +139,21 @@ package {
                     ++i;
                     continue;
                 }
+                /*
                 //chunkRect.x
                 point.x
                     = i % FULL_CHUNKED_WIDTH * cacheData.CACHE_WIDTH;
                 //chunkRect.y
                 point.y
                     = int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT;
+                */
                 //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
                 if (cacheData.states[currentStates[i]] == null) {
                     cacheData.generator.calculateState(currentStates[i]);
                 }
-                cacheData.drawState(currentStates[i], bitmapData, chunkRect, point);
+                bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, points[i]);
+
+                //cacheData.drawState(currentStates[i], bitmapData, chunkRect, points[i]);
                 //bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, point);
             }
             bitmapData.unlock();
@@ -181,14 +194,19 @@ package {
                     | cacheData.states[currentStates[downIdx + 1]].topLeft
                 );
                 if (currentStates[i] ^ nextStates[i]) {
+                    /*
                     //chunkRect.x
                     point.x
                         = i % FULL_CHUNKED_WIDTH * cacheData.CACHE_WIDTH;
                     //chunkRect.y
                     point.y
                         = int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT;
+                    */
                     //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
-                    cacheData.drawState(nextStates[i], bitmapData, chunkRect, point);
+                    
+                    bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, points[i]);
+                    //cacheData.drawState(nextStates[i], bitmapData, chunkRect, points[i]);
+                    
                     //bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, point);
                     
                     currentState = cacheData.states[currentStates[i]];
