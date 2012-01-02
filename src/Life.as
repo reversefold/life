@@ -208,6 +208,7 @@ package {
 
         private function onLoadRLEComplete(e : Event) : void {
             parseRLE(loadFile.data.toString());
+            
             addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
             enterFrameListener = drawChunkedAndNext;
             lifeState.drawChunked();
@@ -218,13 +219,19 @@ package {
         }
         
         private function parseRLE(str : String) : void {
-			var str : String = loadFile.data.toString();
+            str = str.replace(/(\r\n|\n|\r)/g, "\n");
 			var i : uint = 0;
+            var line : String;
 			var lines : Vector.<String> = Vector.<String>(str.split("\n"));
-			while (lines[i].charAt(0) == "#") {
-				lines.shift();
+            var lines2 : Vector.<String> = new Vector.<String>();
+            for each (line in lines) {
+                line = line.replace(/\s+/g, "");
+			    if (line.length > 0 && line.charAt(0) != "#") {
+                    lines2.push(line);
+                }
 			}
-			var line : String = lines.shift().replace(/\s*/g, "");
+            lines = lines2;
+			line = lines.shift().replace(/\s*/g, "");
 			var parts : Vector.<String> = Vector.<String>(line.split(","));
 			var width : uint;
 			var height : uint;
@@ -270,8 +277,20 @@ package {
                             break;
                         case "o":
                             for (var j : uint = 0; j < num; ++j) {
-                                var xx : uint = x + int(lifeState.FULL_CHUNKED_WIDTH / 2) * CACHE_WIDTH - int(width / 2);
-                                var yy : uint = y + int(lifeState.FULL_CHUNKED_HEIGHT / 2) * CACHE_HEIGHT - int(height / 2);
+                                var xx : int = x + int(lifeState.CHUNKED_WIDTH / 2) * CACHE_WIDTH - int(width / 2);
+                                var yy : int = y + int(lifeState.CHUNKED_HEIGHT / 2) * CACHE_HEIGHT - int(height / 2);
+                                if (xx >= (lifeState.CHUNKED_WIDTH * CACHE_WIDTH)) {
+                                    xx %= (lifeState.CHUNKED_WIDTH * CACHE_WIDTH);
+                                }
+                                while (xx < 0) {
+                                    xx += lifeState.CHUNKED_WIDTH * CACHE_WIDTH;
+                                }
+                                if (yy >= (lifeState.CHUNKED_HEIGHT * CACHE_HEIGHT)) {
+                                    yy %= (lifeState.CHUNKED_HEIGHT * CACHE_HEIGHT);
+                                }
+                                while (yy < 0) {
+                                    yy += lifeState.CHUNKED_HEIGHT * CACHE_HEIGHT;
+                                }
                                 lifeState.setPixel(xx, yy);
                                 ++x;
                             }

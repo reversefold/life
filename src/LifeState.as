@@ -352,8 +352,8 @@ package {
         }
         
         public function setPixel(x : uint, y : uint) : void {
-            var idx : uint = int(x / cacheData.CACHE_WIDTH)
-                + int(y / cacheData.CACHE_HEIGHT) * FULL_CHUNKED_WIDTH;
+            var idx : uint = int(x / cacheData.CACHE_WIDTH) + 1
+                + int(y / cacheData.CACHE_HEIGHT + 1) * FULL_CHUNKED_WIDTH;
             var xxx : uint = x % cacheData.CACHE_WIDTH;
             var yyy : uint = y % cacheData.CACHE_HEIGHT;
             currentStates[idx] |= 0x1 << (xxx + 1 + (yyy + 1) * cacheData.FULL_CACHE_WIDTH);
