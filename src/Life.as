@@ -165,7 +165,7 @@ package {
 			} else if (e.charCode == 'f'.charCodeAt()) {
 				FPSCounter.reset();
 				return;
-            /*
+            /**/
 			} else if (e.charCode == 'l'.charCodeAt()) {
 				loadFile = new FileReference();
 				loadFile.addEventListener(Event.SELECT, onLoadFileSelect);
@@ -173,7 +173,7 @@ package {
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				enterFrameListener = null;
 				return;
-            */
+            /**/
 			} else if (e.charCode == 'n'.charCodeAt()) {
 				drawChunkedAndNext();
 				return;
@@ -199,7 +199,7 @@ package {
                 fileRef.save(ba, fn);
             }
 		}
-		/*
+		/**/
 		private function onLoadFileSelect(e : Event) : void {
 			loadFile.addEventListener(ProgressEvent.PROGRESS, onProgress);
 			loadFile.addEventListener(Event.COMPLETE, onLoadRLEComplete);
@@ -213,7 +213,7 @@ package {
 			while (lines[i].charAt(0) == "#") {
 				lines.shift();
 			}
-			var line : String = lines.shift().replace(/\s/, "");
+			var line : String = lines.shift().replace(/\s*/g, "");
 			var parts : Vector.<String> = Vector.<String>(line.split(","));
 			var width : uint;
 			var height : uint;
@@ -225,16 +225,16 @@ package {
 					height = uint(bits[1]);
 				}
 			}
-			str = lines.join("");
+			str = lines.join("").replace(/\s*/g, "");
 			var numStr : String = "";
 			var num : uint = 1;
-			for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
-				if ((i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1) {
+			for (i = lifeState.FULL_CHUNKED_WIDTH + 1; i < lifeState.FULL_CHUNKED_LIVE_LENGTH; ++i) {
+				if ((i % lifeState.FULL_CHUNKED_WIDTH) == lifeState.FULL_CHUNKED_WIDTH - 1) {
 					++i;
 					continue;
 				}
-				currentStates[i] = nextStates[i] = 0x0;
-				nextChunksToCheck[i] = currentChunksToCheck[i] = true;
+                lifeState.currentStates[i] = lifeState.nextStates[i] = 0x0;
+                lifeState.nextChunksToCheck[i] = lifeState.currentChunksToCheck[i] = true;
 			}
 			var x : uint = 0;
 			var y : uint = 0;
@@ -261,12 +261,14 @@ package {
 								++x;
 								continue;
 							}
-							var idx : uint = x
-								+ int(FULL_CHUNKED_WIDTH / 2 - width / 2)
-								+ (y
-									+ int(FULL_CHUNKED_HEIGHT / 2 - height / 2)
-								  ) * FULL_CHUNKED_WIDTH;
-							nextStates[idx] = currentStates[idx] = cacheData.masks.inner;
+                            var xx : uint = x - int(width / 2) + int(lifeState.FULL_CHUNKED_WIDTH / 2) * CACHE_WIDTH;
+                            var yy : uint = y - int(height / 2) + int(lifeState.FULL_CHUNKED_HEIGHT / 2) * CACHE_HEIGHT;
+							var idx : uint = int(xx / CACHE_WIDTH)
+								+ int(yy / CACHE_HEIGHT) * lifeState.FULL_CHUNKED_WIDTH;
+                            var xxx : uint = xx % CACHE_WIDTH;
+                            var yyy : uint = yy % CACHE_HEIGHT;
+                            //lifeState.nextStates[idx] = lifeState.currentStates[idx] = cacheData.masks.inner;
+                            lifeState.currentStates[idx] |= 0x1 << xxx + 1 + (yyy + 1) * cacheData.FULL_CACHE_WIDTH;
 							//nextChunksToCheck[idx] = currentChunksToCheck[idx] = true;
 							++x;
 						}
@@ -283,13 +285,13 @@ package {
 			}
 			addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
 			enterFrameListener = drawChunkedAndNext;
-			drawChunked();
+			lifeState.drawChunked();
 			
 			paused = false;
 			//invertPause(true);
 			pause(true);
 		}
-		*/
+		/**/
 		private function pause(resetFPS : Boolean = false) : void {
 			if (resetFPS) {
 				FPSCounter.reset();
