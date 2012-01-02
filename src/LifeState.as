@@ -109,14 +109,14 @@ package {
                     neighbors.bottomRight += off;
                 }
                 neighbors.left = i - 1;
-                if (WRAP && neighbors.left % FULL_CHUNKED_WIDTH == 0) {
+                if (WRAP && (neighbors.left % FULL_CHUNKED_WIDTH) == 0) {
                     off = FULL_CHUNKED_WIDTH - 2;
                     neighbors.left += off;
                     neighbors.topLeft += off;
-                    neighbors.topRight += off;
+                    neighbors.bottomLeft += off;
                 }
                 neighbors.right = i + 1;
-                if (WRAP && (neighbors.right + 1) % FULL_CHUNKED_WIDTH == 0) {
+                if (WRAP && ((neighbors.right + 1) % FULL_CHUNKED_WIDTH) == 0) {
                     off = FULL_CHUNKED_WIDTH - 2;
                     neighbors.right -= off;
                     neighbors.topRight -= off;
