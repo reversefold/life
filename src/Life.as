@@ -199,7 +199,7 @@ package {
                 fileRef.save(ba, fn);
             }
 		}
-		/**/
+
 		private function onLoadFileSelect(e : Event) : void {
 			loadFile.addEventListener(ProgressEvent.PROGRESS, onProgress);
 			loadFile.addEventListener(Event.COMPLETE, onLoadRLEComplete);
@@ -207,6 +207,17 @@ package {
 		}
 
         private function onLoadRLEComplete(e : Event) : void {
+            parseRLE(loadFile.data.toString());
+            addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
+            enterFrameListener = drawChunkedAndNext;
+            lifeState.drawChunked();
+            
+            paused = false;
+            //invertPause(true);
+            pause(true);
+        }
+        
+        private function parseRLE(str : String) : void {
 			var str : String = loadFile.data.toString();
 			var i : uint = 0;
 			var lines : Vector.<String> = Vector.<String>(str.split("\n"));
@@ -249,49 +260,32 @@ package {
 					} else {
 						num = 1;
 					}
-					var pixels : String = "";
-					if (char != "$" && (char.charCodeAt() < '0'.charCodeAt() || char.charCodeAt() > '9'.charCodeAt())) {
-						pixels += char;
-						++i;
-						char = str.charAt(i);
-					}
-					for (var j : uint = 0; j < num; ++j) {
-						for (var ci : uint = 0; ci < pixels.length; ++ci) {
-							if (pixels.charAt(ci) == "b") {
-								++x;
-								continue;
-							}
-                            var xx : uint = x - int(width / 2) + int(lifeState.FULL_CHUNKED_WIDTH / 2) * CACHE_WIDTH;
-                            var yy : uint = y - int(height / 2) + int(lifeState.FULL_CHUNKED_HEIGHT / 2) * CACHE_HEIGHT;
-							var idx : uint = int(xx / CACHE_WIDTH)
-								+ int(yy / CACHE_HEIGHT) * lifeState.FULL_CHUNKED_WIDTH;
-                            var xxx : uint = xx % CACHE_WIDTH;
-                            var yyy : uint = yy % CACHE_HEIGHT;
-                            //lifeState.nextStates[idx] = lifeState.currentStates[idx] = cacheData.masks.inner;
-                            lifeState.currentStates[idx] |= 0x1 << xxx + 1 + (yyy + 1) * cacheData.FULL_CACHE_WIDTH;
-							//nextChunksToCheck[idx] = currentChunksToCheck[idx] = true;
-							++x;
-						}
-					}
-					if (char == "$") {
-						++y;
-						x = 0;
-					} else if (char == "!") {
-						break;
-					} else {
-						--i;
-					}
+                    switch (char) {
+                        case "b":
+                            x += num;
+                            break;
+                        case "$":
+                            y += num;
+                            x = 0;
+                            break;
+                        case "o":
+                            for (var j : uint = 0; j < num; ++j) {
+                                var xx : uint = x + int(lifeState.FULL_CHUNKED_WIDTH / 2) * CACHE_WIDTH - int(width / 2);
+                                var yy : uint = y + int(lifeState.FULL_CHUNKED_HEIGHT / 2) * CACHE_HEIGHT - int(height / 2);
+                                lifeState.setPixel(xx, yy);
+                                ++x;
+                            }
+                            break;
+                        case "!":
+                            return;
+                        default:
+                            throw new Error("What is a '" + char + "'?");
+                            break;
+                    }
 				}
 			}
-			addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
-			enterFrameListener = drawChunkedAndNext;
-			lifeState.drawChunked();
-			
-			paused = false;
-			//invertPause(true);
-			pause(true);
 		}
-		/**/
+        
 		private function pause(resetFPS : Boolean = false) : void {
 			if (resetFPS) {
 				FPSCounter.reset();

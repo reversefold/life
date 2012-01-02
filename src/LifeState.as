@@ -214,14 +214,16 @@ package {
             bitmapData.lock();
             nextChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
             for (var i : uint = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+                /*
                 if (
                     //checks for the last index in a row, which is always dead
                     (i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1
                 ) {
-                    //skips the first index in a row as well, which is also always deadf
+                    //skips the first index in a row as well, which is also always dead
                     ++i;
                     continue;
                 }
+                */
                 if (!currentChunksToCheck[i]) {
                     continue;
                 }
@@ -347,6 +349,14 @@ package {
             var tempChunksToCheck : Vector.<Boolean> = currentChunksToCheck;
             currentChunksToCheck = nextChunksToCheck;
             nextChunksToCheck = tempChunksToCheck;
+        }
+        
+        public function setPixel(x : uint, y : uint) : void {
+            var idx : uint = int(x / cacheData.CACHE_WIDTH)
+                + int(y / cacheData.CACHE_HEIGHT) * FULL_CHUNKED_WIDTH;
+            var xxx : uint = x % cacheData.CACHE_WIDTH;
+            var yyy : uint = y % cacheData.CACHE_HEIGHT;
+            currentStates[idx] |= 0x1 << (xxx + 1 + (yyy + 1) * cacheData.FULL_CACHE_WIDTH);
         }
     }
 }
