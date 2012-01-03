@@ -152,7 +152,8 @@ package {
                         '1',
                         '2',
                         '3',
-                        '4'
+                        '4',
+                        '5'
                     ]);
                     if (types.indexOf(char) == -1) {
                         break;

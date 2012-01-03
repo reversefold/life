@@ -13,9 +13,12 @@ package {
         private static var _CORDER_LINESHIP: Class;
         [Embed(source="assets/data/corder-adjustable-lineship-short.rle", mimeType="application/octet-stream")]
         private static var _CORDER_ADJUSTABLE_LINESHIP: Class;
+        [Embed(source="assets/data/glider-stream-crystal.rle", mimeType="application/octet-stream")]
+        private static var _GLIDER_STREAM_CRYSTAL: Class;
 
         public static var CORDER_LINESHIP : String = ByteArray(new _CORDER_LINESHIP()).toString();
         public static var CORDER_ADJUSTABLE_LINESHIP : String = ByteArray(new _CORDER_ADJUSTABLE_LINESHIP()).toString();
+        public static var GLIDER_STREAM_CRYSTAL : String = ByteArray(new _GLIDER_STREAM_CRYSTAL()).toString();
         
         public var REQUESTED_WIDTH : uint;
         public var REQUESTED_HEIGHT : uint;
@@ -145,6 +148,9 @@ package {
             var yo : uint;
             var x : uint;
             switch (type) {
+                case 5:
+                    parseRLE(GLIDER_STREAM_CRYSTAL);
+                    break;
                 case 4:
                     parseRLE(CORDER_ADJUSTABLE_LINESHIP);
                     break;
