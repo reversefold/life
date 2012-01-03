@@ -4,9 +4,18 @@ package {
     import flash.display.BitmapData;
     import flash.geom.Point;
     import flash.geom.Rectangle;
+    import flash.utils.ByteArray;
 
     public class LifeState {
         public static const WRAP : Boolean = true;
+        
+        [Embed(source="assets/data/corder-lineship.rle", mimeType="application/octet-stream")]
+        private static var _CORDER_LINESHIP: Class;
+        [Embed(source="assets/data/corder-adjustable-lineship-short.rle", mimeType="application/octet-stream")]
+        private static var _CORDER_ADJUSTABLE_LINESHIP: Class;
+
+        public static var CORDER_LINESHIP : String = ByteArray(new _CORDER_LINESHIP()).toString();
+        public static var CORDER_ADJUSTABLE_LINESHIP : String = ByteArray(new _CORDER_ADJUSTABLE_LINESHIP()).toString();
         
         public var REQUESTED_WIDTH : uint;
         public var REQUESTED_HEIGHT : uint;
@@ -137,8 +146,10 @@ package {
             var x : uint;
             switch (type) {
                 case 4:
+                    parseRLE(CORDER_ADJUSTABLE_LINESHIP);
                     break;
                 case 3:
+                    parseRLE(CORDER_LINESHIP);
                     break;
                 case 2:
                     var m : uint = 7 << (cacheData.FULL_CACHE_WIDTH + 1);
