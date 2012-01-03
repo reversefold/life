@@ -136,15 +136,11 @@ package {
             var yo : uint;
             var x : uint;
             switch (type) {
-                case 2:
-                    for (y = 1; y < CHUNKED_HEIGHT - 1; ++y) {
-                        yo = FULL_CHUNKED_WIDTH * y;
-                        for (x = 1; x < CHUNKED_WIDTH - 1; ++x) {
-                            currentStates[x + yo] = cacheData.masks.inner & uint(Math.random() * uint.MAX_VALUE);
-                        }
-                    }
+                case 4:
                     break;
-                case 1:
+                case 3:
+                    break;
+                case 2:
                     var m : uint = 7 << (cacheData.FULL_CACHE_WIDTH + 1);
                     for (y = 2; y < cacheData.FULL_CACHE_HEIGHT - 1; ++y) {
                         m |= 1 << (cacheData.FULL_CACHE_WIDTH * y + 1);
@@ -156,12 +152,20 @@ package {
                         }
                     }
                     break;
-                case 0:
-                default:
+                case 1:
                     for (y = CHUNKED_HEIGHT / 4 + 1; y < CHUNKED_HEIGHT * 3 / 4 + 1; ++y) {
                         yo = FULL_CHUNKED_WIDTH * y;
                         for (x = CHUNKED_WIDTH / 4 + 1; x < CHUNKED_WIDTH * 3 / 4 + 1; ++x) {
                             currentStates[x + yo] = cacheData.masks.inner;
+                        }
+                    }
+                    break;
+                case 0:
+                default:
+                    for (y = 1; y < CHUNKED_HEIGHT - 1; ++y) {
+                        yo = FULL_CHUNKED_WIDTH * y;
+                        for (x = 1; x < CHUNKED_WIDTH - 1; ++x) {
+                            currentStates[x + yo] = cacheData.masks.inner & uint(Math.random() * uint.MAX_VALUE);
                         }
                     }
                     break;
@@ -275,6 +279,93 @@ package {
             var xxx : uint = x % cacheData.CACHE_WIDTH;
             var yyy : uint = y % cacheData.CACHE_HEIGHT;
             currentStates[idx] |= 0x1 << (xxx + 1 + (yyy + 1) * cacheData.FULL_CACHE_WIDTH);
+        }
+        
+        public function parseRLE(str : String) : void {
+            str = str.replace(/(\r\n|\n|\r)/g, "\n");
+            var i : uint = 0;
+            var line : String;
+            var lines : Vector.<String> = Vector.<String>(str.split("\n"));
+            var lines2 : Vector.<String> = new Vector.<String>();
+            for each (line in lines) {
+                line = line.replace(/\s+/g, "");
+                if (line.length > 0 && line.charAt(0) != "#") {
+                    lines2.push(line);
+                }
+            }
+            lines = lines2;
+            line = lines.shift().replace(/\s*/g, "");
+            var parts : Vector.<String> = Vector.<String>(line.split(","));
+            var width : uint;
+            var height : uint;
+            for each (var part : String in parts) {
+                var bits : Vector.<String> = Vector.<String>(part.split("="));
+                if (bits[0] == "x") {
+                    width = uint(bits[1]);
+                } else {
+                    height = uint(bits[1]);
+                }
+            }
+            str = lines.join("").replace(/\s*/g, "");
+            var numStr : String = "";
+            var num : uint = 1;
+            for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+                if ((i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1) {
+                    ++i;
+                    continue;
+                }
+                currentStates[i] = nextStates[i] = 0x0;
+                nextChunksToCheck[i] = currentChunksToCheck[i] = true;
+            }
+            var x : uint = 0;
+            var y : uint = 0;
+            for (i = 0; i < str.length; ++i) {
+                var char : String = str.charAt(i);
+                if (char.charCodeAt() >= '0'.charCodeAt() && char.charCodeAt() <= '9'.charCodeAt()) {
+                    numStr += char;
+                } else {
+                    if (numStr.length > 0) {
+                        num = uint(numStr);
+                        numStr = "";
+                    } else {
+                        num = 1;
+                    }
+                    switch (char) {
+                        case "b":
+                            x += num;
+                            break;
+                        case "$":
+                            y += num;
+                            x = 0;
+                            break;
+                        case "o":
+                            for (var j : uint = 0; j < num; ++j) {
+                                var xx : int = x + int(CHUNKED_WIDTH / 2) * cacheData.CACHE_WIDTH - int(width / 2);
+                                var yy : int = y + int(CHUNKED_HEIGHT / 2) * cacheData.CACHE_HEIGHT - int(height / 2);
+                                if (xx >= (CHUNKED_WIDTH * cacheData.CACHE_WIDTH)) {
+                                    xx %= (CHUNKED_WIDTH * cacheData.CACHE_WIDTH);
+                                }
+                                while (xx < 0) {
+                                    xx += CHUNKED_WIDTH * cacheData.CACHE_WIDTH;
+                                }
+                                if (yy >= (CHUNKED_HEIGHT * cacheData.CACHE_HEIGHT)) {
+                                    yy %= (CHUNKED_HEIGHT * cacheData.CACHE_HEIGHT);
+                                }
+                                while (yy < 0) {
+                                    yy += CHUNKED_HEIGHT * cacheData.CACHE_HEIGHT;
+                                }
+                                setPixel(xx, yy);
+                                ++x;
+                            }
+                            break;
+                        case "!":
+                            return;
+                        default:
+                            throw new Error("What is a '" + char + "'?");
+                            break;
+                    }
+                }
+            }
         }
     }
 }

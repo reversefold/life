@@ -91,7 +91,7 @@ package {
 		
 		public static var enterFrameListener : Function;
 		
-		public static var type : uint = 0;
+		public static var type : uint = 1;
 		
 		public static var paused : Boolean = false;
 
@@ -107,51 +107,61 @@ package {
 		}
 
 		private function onKeyUp(e : KeyboardEvent) : void {
-			trace("Pressed " + e.charCode);
-			if (e.charCode == 'r'.charCodeAt()) {
-				type = (type + 1) % 3;
-				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-				enterFrameListener = resetListener;
-				addEventListener(Event.ENTER_FRAME, resetListener);
-				return;
-			} else if (e.charCode == 'p'.charCodeAt()) {
-				invertPause();
-				return;
-			} else if (e.charCode == 'f'.charCodeAt()) {
-				FPSCounter.reset();
-				return;
-            /**/
-			} else if (e.charCode == 'l'.charCodeAt()) {
-				loadFile = new FileReference();
-				loadFile.addEventListener(Event.SELECT, onLoadFileSelect);
-				loadFile.browse([new FileFilter("RLE File", "rle")]);
-				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-				enterFrameListener = null;
-				return;
-            /**/
-			} else if (e.charCode == 'n'.charCodeAt()) {
-				drawChunkedAndNext();
-				return;
-			}
-			/*
-			if (e.charCode == 'n'.charCodeAt()) {
-				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-				addEventListener(Event.ENTER_FRAME, renderNaive);
-				enterFrameListener = renderNaive;
-			}
-			if (e.charCode == 'c'.charCodeAt()) {
-				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
-				addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
-				enterFrameListener = drawChunkedAndNext;
-			}
-			*/
-            else if (e.charCode == 's'.charCodeAt()) {
-                var fn : String = cacheData.CACHE_WIDTH + "x" + cacheData.CACHE_HEIGHT
-                    //+ ".json";
-                    + ".bin";
-                var ba : ByteArray = CacheDataBinaryLoader.getBinaryData(cacheData);
-                var fileRef : FileReference = new FileReference();
-                fileRef.save(ba, fn);
+			//trace("Pressed " + e.charCode);
+            var char : String = String.fromCharCode(e.charCode);
+			switch (char) {
+			    case 'p':
+    				invertPause();
+    				break;
+			    case 'f':
+    				FPSCounter.reset();
+    				break;
+    			case 'l':
+    				loadFile = new FileReference();
+    				loadFile.addEventListener(Event.SELECT, onLoadFileSelect);
+    				loadFile.browse([new FileFilter("RLE File", "rle")]);
+    				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+    				enterFrameListener = null;
+    				break;
+    			case 'n':
+    				drawChunkedAndNext();
+    				break;
+    			/*
+    			case 'n':
+    				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+    				addEventListener(Event.ENTER_FRAME, renderNaive);
+    				enterFrameListener = renderNaive;
+                    break;
+    			case 'c':
+    				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+    				addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
+    				enterFrameListener = drawChunkedAndNext;
+                    break;
+    			*/
+                case 's':
+                    var fn : String = cacheData.CACHE_WIDTH + "x" + cacheData.CACHE_HEIGHT
+                        //+ ".json";
+                        + ".bin";
+                    var ba : ByteArray = CacheDataBinaryLoader.getBinaryData(cacheData);
+                    var fileRef : FileReference = new FileReference();
+                    fileRef.save(ba, fn);
+                    break;
+                default:
+                    var types : Vector.<String> = Vector.<String>([
+                        'r',
+                        '1',
+                        '2',
+                        '3',
+                        '4'
+                    ]);
+                    if (types.indexOf(char) == -1) {
+                        break;
+                    }
+                    type = types.indexOf(char);//(type + 1) % 3;
+                    removeEventListener(Event.ENTER_FRAME, enterFrameListener);
+                    enterFrameListener = resetListener;
+                    addEventListener(Event.ENTER_FRAME, resetListener);
+                    break;
             }
 		}
 
@@ -162,7 +172,7 @@ package {
 		}
 
         private function onLoadRLEComplete(e : Event) : void {
-            parseRLE(loadFile.data.toString());
+            lifeState.parseRLE(loadFile.data.toString());
             
             addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
             enterFrameListener = drawChunkedAndNext;
@@ -170,93 +180,6 @@ package {
             
             pause(true);
         }
-        
-        private function parseRLE(str : String) : void {
-            str = str.replace(/(\r\n|\n|\r)/g, "\n");
-			var i : uint = 0;
-            var line : String;
-			var lines : Vector.<String> = Vector.<String>(str.split("\n"));
-            var lines2 : Vector.<String> = new Vector.<String>();
-            for each (line in lines) {
-                line = line.replace(/\s+/g, "");
-			    if (line.length > 0 && line.charAt(0) != "#") {
-                    lines2.push(line);
-                }
-			}
-            lines = lines2;
-			line = lines.shift().replace(/\s*/g, "");
-			var parts : Vector.<String> = Vector.<String>(line.split(","));
-			var width : uint;
-			var height : uint;
-			for each (var part : String in parts) {
-				var bits : Vector.<String> = Vector.<String>(part.split("="));
-				if (bits[0] == "x") {
-					width = uint(bits[1]);
-				} else {
-					height = uint(bits[1]);
-				}
-			}
-			str = lines.join("").replace(/\s*/g, "");
-			var numStr : String = "";
-			var num : uint = 1;
-			for (i = lifeState.FULL_CHUNKED_WIDTH + 1; i < lifeState.FULL_CHUNKED_LIVE_LENGTH; ++i) {
-				if ((i % lifeState.FULL_CHUNKED_WIDTH) == lifeState.FULL_CHUNKED_WIDTH - 1) {
-					++i;
-					continue;
-				}
-                lifeState.currentStates[i] = lifeState.nextStates[i] = 0x0;
-                lifeState.nextChunksToCheck[i] = lifeState.currentChunksToCheck[i] = true;
-			}
-			var x : uint = 0;
-			var y : uint = 0;
-			for (i = 0; i < str.length; ++i) {
-				var char : String = str.charAt(i);
-				if (char.charCodeAt() >= '0'.charCodeAt() && char.charCodeAt() <= '9'.charCodeAt()) {
-					numStr += char;
-				} else {
-					if (numStr.length > 0) {
-						num = uint(numStr);
-						numStr = "";
-					} else {
-						num = 1;
-					}
-                    switch (char) {
-                        case "b":
-                            x += num;
-                            break;
-                        case "$":
-                            y += num;
-                            x = 0;
-                            break;
-                        case "o":
-                            for (var j : uint = 0; j < num; ++j) {
-                                var xx : int = x + int(lifeState.CHUNKED_WIDTH / 2) * CACHE_WIDTH - int(width / 2);
-                                var yy : int = y + int(lifeState.CHUNKED_HEIGHT / 2) * CACHE_HEIGHT - int(height / 2);
-                                if (xx >= (lifeState.CHUNKED_WIDTH * CACHE_WIDTH)) {
-                                    xx %= (lifeState.CHUNKED_WIDTH * CACHE_WIDTH);
-                                }
-                                while (xx < 0) {
-                                    xx += lifeState.CHUNKED_WIDTH * CACHE_WIDTH;
-                                }
-                                if (yy >= (lifeState.CHUNKED_HEIGHT * CACHE_HEIGHT)) {
-                                    yy %= (lifeState.CHUNKED_HEIGHT * CACHE_HEIGHT);
-                                }
-                                while (yy < 0) {
-                                    yy += lifeState.CHUNKED_HEIGHT * CACHE_HEIGHT;
-                                }
-                                lifeState.setPixel(xx, yy);
-                                ++x;
-                            }
-                            break;
-                        case "!":
-                            return;
-                        default:
-                            throw new Error("What is a '" + char + "'?");
-                            break;
-                    }
-				}
-			}
-		}
         
 		private function pause(resetFPS : Boolean = false) : void {
 			if (resetFPS) {
