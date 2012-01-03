@@ -38,11 +38,6 @@ package {
                     cacheData.cache[_cacheLoadIdx] = binaryData.readUnsignedInt();
                     ++_cacheLoadIdx;
                 }
-                /*
-                for (var i : uint = 0; i < cache.length; ++i) {
-                cache[i] = binaryData.readUnsignedInt();
-                }
-                */
             } else {
                 if (_stateLoadIdx == 0) {
                     cacheData.states = new Vector.<Chunk>(binaryData.readUnsignedInt(), true);

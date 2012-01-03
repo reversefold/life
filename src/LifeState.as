@@ -187,31 +187,15 @@ package {
                     ++i;
                     continue;
                 }
-                /*
-                //chunkRect.x
-                point.x
-                    = i % FULL_CHUNKED_WIDTH * cacheData.CACHE_WIDTH;
-                //chunkRect.y
-                point.y
-                    = int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT;
-                */
-                //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
                 if (cacheData.states[currentStates[i]] == null) {
                     cacheData.generator.calculateState(currentStates[i]);
                 }
                 bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, points[i]);
-
-                //cacheData.drawState(currentStates[i], bitmapData, chunkRect, points[i]);
-                //bitmapData.copyPixels(cacheData.states[currentStates[i]].bitmapData, chunkRect, point);
             }
             bitmapData.unlock();
         }
         
         public function drawChunkedAndNext() : void {
-            /*
-            r.x = 0;
-            r.y = 0;
-            */
             bitmapData.lock();
             nextChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
             for (var i : uint = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
@@ -228,23 +212,6 @@ package {
                 if (!currentChunksToCheck[i]) {
                     continue;
                 }
-                
-                /*
-                upIdx = i - FULL_CHUNKED_WIDTH;
-                downIdx = i + FULL_CHUNKED_WIDTH;
-                nextStates[i] = cacheData.getNextState(
-                    currentStates[i]
-                    | cacheData.states[currentStates[upIdx]].bottom
-                    | cacheData.states[currentStates[downIdx]].top
-                    | cacheData.states[currentStates[i - 1]].right
-                    | cacheData.states[currentStates[i + 1]].left
-                    
-                    | cacheData.states[currentStates[upIdx - 1]].bottomRight
-                    | cacheData.states[currentStates[upIdx + 1]].bottomLeft
-                    | cacheData.states[currentStates[downIdx - 1]].topRight
-                    | cacheData.states[currentStates[downIdx + 1]].topLeft
-                );
-                */
                 var neighbors : Chunk = stateNeighbors[i];
                 nextStates[i] = cacheData.getNextState(
                     currentStates[i]
@@ -259,51 +226,12 @@ package {
                     | cacheData.states[currentStates[neighbors.bottomRight]].topLeft
                 );
                 if (currentStates[i] ^ nextStates[i]) {
-                    /*
-                    //chunkRect.x
-                    point.x
-                        = i % FULL_CHUNKED_WIDTH * cacheData.CACHE_WIDTH;
-                    //chunkRect.y
-                    point.y
-                        = int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT;
-                    */
-                    //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
-                    
                     bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, points[i]);
-
-                    //cacheData.drawState(nextStates[i], bitmapData, chunkRect, points[i]);
-                    
-                    //bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, point);
                     
                     currentState = cacheData.states[currentStates[i]];
                     nextState = cacheData.states[nextStates[i]];
                     nextChunksToCheck[i] = true;
-                    /*
-                    if (currentState.bottom ^ nextState.bottom) {
-                        nextChunksToCheck[downIdx] = true;
-                    }
-                    if (currentState.top ^ nextState.top) {
-                        nextChunksToCheck[upIdx] = true;
-                    }
-                    if (currentState.left ^ nextState.left) {
-                        nextChunksToCheck[i - 1] = true;
-                    }
-                    if (currentState.right ^ nextState.right) {
-                        nextChunksToCheck[i + 1] = true;
-                    }
-                    if (currentState.bottomLeft ^ nextState.bottomLeft) {
-                        nextChunksToCheck[downIdx - 1] = true;
-                    }
-                    if (currentState.bottomRight ^ nextState.bottomRight) {
-                        nextChunksToCheck[downIdx + 1] = true;
-                    }
-                    if (currentState.topLeft ^ nextState.topLeft) {
-                        nextChunksToCheck[upIdx - 1] = true;
-                    }
-                    if (currentState.topRight ^ nextState.topRight) {
-                        nextChunksToCheck[upIdx + 1] = true;
-                    }
-                    */
+
                     if (currentState.bottom ^ nextState.bottom) {
                         nextChunksToCheck[neighbors.bottom] = true;
                     }
@@ -329,21 +257,9 @@ package {
                         nextChunksToCheck[neighbors.topRight] = true;
                     }
                 }
-                /*
-                r.x += CACHE_WIDTH;
-                r.x %= W;
-                if (r.x == 0) {
-                    r.y += CACHE_HEIGHT;
-                }
-                */
             }
             bitmapData.unlock();
-            /** /
-            graphics.clear();
-            graphics.beginBitmapFill(bd);
-            graphics.drawRect(0, 0, W, H);
-            graphics.endFill();
-            /**/
+
             var tmpStates : Vector.<uint> = currentStates;
             currentStates = nextStates;
             nextStates = tmpStates;

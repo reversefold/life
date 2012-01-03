@@ -32,9 +32,6 @@ package {
 	
 	import mx.utils.StringUtil;
 	
-	//[SWF(frameRate="100", width="1920", height="1000")]
-	//[SWF(frameRate="100", width="1000", height="1000")]
-	//[SWF(frameRate="100", width="2560", height="1500")]
 	[SWF(frameRate="1000")]//, width="1000", height="700"
 	[Frame(factoryClass="Preloader")]
 	public class Life extends Sprite {
@@ -50,11 +47,6 @@ package {
         
 		//[Embed(source="assets/data/3x3.bin", mimeType="application/octet-stream")]
 		private var d : Class;
-		
-		/*
-		public static const REQUESTED_WIDTH : uint = 2560;
-		public static const REQUESTED_HEIGHT : uint = 1500;
-		*/
 		
         public static const ON_DEMAND : Boolean = true;
 		public static const LOAD : Boolean = false;
@@ -78,16 +70,11 @@ package {
 		public static var postBitmapData : BitmapData;
 		public static var postBitmap : Bitmap;
 		
-		//public static var cacheRect : Rectangle;
-		//public static var cacheRect2 : Rectangle;
-		//public static var cacheMat : Matrix;
-		
 		public static var dataString : String = null;
 		public static var fileRef : FileReference;
 		
 		public static var jsonDecoder : JSONDecoderAsync = null;
 		public static var loadedDataObject : Object = null;
-		//public static var loadedDataObject : Object = LifeData.data2x2;
 		
 		public static var loader : URLLoader = null;
 		public static var loaded : Boolean = false;
@@ -104,42 +91,10 @@ package {
 		
 		public static var enterFrameListener : Function;
 		
-		//public static var random : Boolean = false;
 		public static var type : uint = 0;
 		
 		public static var paused : Boolean = false;
 
-		
-		/*
-		 * This set of vars changes when the width/height change
-		 */
-		/* Original fixed values
-		public static const REQUESTED_WIDTH : uint = 1000;
-		public static const REQUESTED_HEIGHT : uint = 700;
-		
-		public static const DISPLAY_WIDTH : uint = int(REQUESTED_WIDTH / CACHE_WIDTH) * CACHE_WIDTH;
-		public static const DISPLAY_HEIGHT : uint = int(REQUESTED_HEIGHT / CACHE_HEIGHT) * CACHE_HEIGHT;
-		
-		public static const CHUNKED_WIDTH : uint = DISPLAY_WIDTH / CACHE_WIDTH;
-		public static const CHUNKED_HEIGHT : uint = DISPLAY_HEIGHT / CACHE_HEIGHT;
-		
-		public static const FULL_CHUNKED_WIDTH : uint = CHUNKED_WIDTH + 2;
-		public static const FULL_CHUNKED_HEIGHT : uint = CHUNKED_HEIGHT + 2;
-		
-		public static const FULL_CHUNKED_LENGTH : uint = FULL_CHUNKED_WIDTH * FULL_CHUNKED_HEIGHT;
-		public static const FULL_CHUNKED_LIVE_LENGTH : uint = FULL_CHUNKED_LENGTH - FULL_CHUNKED_WIDTH;
-		
-		public static const FULL_DISPLAY_WIDTH : uint = DISPLAY_WIDTH + CACHE_WIDTH * 2;
-		public static const FULL_DISPLAY_HEIGHT : uint = DISPLAY_HEIGHT + CACHE_HEIGHT * 2;
-		
-		public static var bitmapData : Raster = new Raster(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
-		public static var bitmap : Bitmap = new Bitmap(bitmapData);
-		public static var bitmapData2 : BitmapData = new BitmapData(FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT, true);
-		
-		public static var currentChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-		public static var nextChunksToCheck : Vector.<Boolean> = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-		*/
-		
 		public static var bitmap : Bitmap;
 		//public static var bitmapData2 : BitmapData;
 
@@ -213,8 +168,6 @@ package {
             enterFrameListener = drawChunkedAndNext;
             lifeState.drawChunked();
             
-            paused = false;
-            //invertPause(true);
             pause(true);
         }
         
@@ -398,9 +351,6 @@ package {
             preBitmap = new Bitmap(preBitmapData);
             postBitmapData = new BitmapData(cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
             postBitmap = new Bitmap(postBitmapData);
-            //cacheRect = new Rectangle(1, 1, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
-            //cacheRect2 = new Rectangle(cacheData.FULL_CACHE_WIDTH + 4, 1, cacheData.FULL_CACHE_WIDTH, cacheData.FULL_CACHE_HEIGHT);
-            //cacheMat = new Matrix(10, 0, 0, 10);
 
 			if (LOAD) {
                 /*
@@ -506,51 +456,6 @@ package {
 						binaryData = null;
 					}
 				}
-				/*
-				for (i = 0; i < states.length; ++i) {
-					if (binaryData.readBoolean()) {
-						states[binaryData.readUnsignedInt()] = Chunk.read(binaryData);
-					}
-				}
-				
-				loaded = true;
-				*/
-
-				/*
-				if (loadedDataObject == null && !jsonDecoder.done) {
-					//trace("decoding JSON " + Number(d.tokenizer.loc * 100 / d.tokenizer.jsonString.length).toFixed(2) + "% " + d.tokenizer.loc + "/" + d.tokenizer.jsonString.length);
-					for (i = 0; i < 150000; ++i) {
-						if (jsonDecoder.loop()) {
-							trace(((getTimer() - jsonStartTime) / 1000).toFixed(4) + "s parsing JSON");
-							loadedDataObject = jsonDecoder.getValue();
-							break;
-						}
-					}
-				} else if (cacheLoadIdx < cache.length) {
-					//trace("loading cache " + Number(cacheLoadIdx * 100 / cache.length).toFixed(2) + "% " + cacheLoadIdx + "/" + cache.length);
-					cacheLoadIdx = cache.length;
-					cache = Vector.<uint>(loadedDataObject.cache);
-					/** /
-					for (i = 0; i < 60000 && cacheLoadIdx < cache.length; ++i) {
-						cache[cacheLoadIdx] = loadedDataObject.cache[cacheLoadIdx];
-						++cacheLoadIdx;
-					}
-					/** /
-				} else if (stateLoadIdx < states.length) {
-					//trace("loading state " + Number(stateLoadIdx * 100 / states.length).toFixed(2) + "% " + stateLoadIdx + "/" + states.length);
-					for (i = 0; i < 60000 && stateLoadIdx < states.length; ++i) {
-						var ch : Chunk;
-						if (loadedDataObject.states[stateLoadIdx] == null) {
-							ch = null;
-						} else {
-							ch = new Chunk(loadedDataObject.states[stateLoadIdx]);
-						}
-						states[stateLoadIdx] = ch;
-						++stateLoadIdx;
-					}
-					loaded = stateLoadIdx == states.length;
-				}
-				*/
 			}
 			
 			drawProgressBar(fileProgress, fileSize, PROGRESS_Y);
@@ -558,11 +463,6 @@ package {
 			    drawProgressBar(cacheDataBinaryLoader.cacheLoadIdx, cacheDataBinaryLoader.cacheLoadMax, PROGRESS_Y + 22);
 			    drawProgressBar(cacheDataBinaryLoader.stateLoadIdx, cacheDataBinaryLoader.stateLoadMax, PROGRESS_Y + 44);
             }
-			/*
-			graphics.beginBitmapFill(fpsbd);
-			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
-			graphics.endFill();
-			*/
 			if (loaded) {
 				trace("Loading time: " + ((getTimer() - loadStartTime) / 1000).toFixed(2) + "s");
 
@@ -654,38 +554,22 @@ package {
             graphics.clear();
             jsonDecoder = null;
 
-            /*
-			for (y = 0; y < F_CHUNKED_H; ++y) {
-				var s : String = "";
-				yo = F_CHUNKED_W * y;
-				for (x = 0; x < F_CHUNKED_W; ++x) {
-					s += bbv[0][x + yo] > 0 ? "1" : "0";
-				}
-				trace(s);
-			}
-			*/
 			lifeState.drawChunked();
-			/** /
-			bitmapData.fillRect(new Rectangle(W / 4, H / 4, W / 2, H / 2), ALIVE);
-			bv[0] = bitmapData.getVector(bitmapData.rect);
-			bv[1] = new Vector.<uint>(W * H, true);
-			draw(bv[ci], bitmapData.rect);
-			/**/
 			
 			removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 			if (!paused) {
 				addEventListener(Event.ENTER_FRAME, drawChunkedAndNext);
 			}
 			enterFrameListener = drawChunkedAndNext;
-			
-			//pause();
 		}
-		/*
+
+        /*
 		private function renderNaive(e : Event) : void {
 			nextFrame();
 			draw(lifeState.currentStates, lifeState.bitmapData.rect);
 		}
 		*/
+        
 		private function generateListener(e : Event) : void {
 			if (preBitmap.parent == null) {
 				generateStartTime = getTimer();
@@ -706,11 +590,7 @@ package {
 				++i;
 			}
 			preBitmapData.setVector(preBitmapData.rect, CacheDataGenerator.uintToVecRet(cacheDataGenerator.cacheIdx, cacheData.CACHE_VECTOR_LENGTH));
-			//bd.fillRect(bd.rect, 0xFF000000 | DEAD);
-			//bitmapData.setVector(cacheRect, currentStates);
-			//draw(c, cacheRect, cacheMat, 10, 10);
 			postBitmapData.setVector(postBitmapData.rect, CacheDataGenerator.uintToVecRet(cacheData.getNextState(cacheDataGenerator.cacheIdx), cacheData.CACHE_VECTOR_LENGTH));
-			//draw(nextStates, cacheRect2, cacheMat);
 			
 			lifeState.bitmapData.fillRect(lifeState.bitmapData.rect, 0x0);
 			
@@ -721,11 +601,6 @@ package {
 			
 			DText.draw(lifeState.bitmapData, String(cacheDataGenerator.full), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
 			DText.draw(lifeState.bitmapData, String(cacheDataGenerator.inner), 40 + 10 * cacheData.FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * cacheData.FULL_CACHE_HEIGHT, DText.CENTER);
-			/*
-			graphics.beginBitmapFill(bitmapData);
-			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
-			graphics.endFill();
-			*/
 
 			if (!more) {
 				trace("Generation time: " + Number((getTimer() - generateStartTime) / 1000).toFixed(2) + "s");
@@ -736,60 +611,20 @@ package {
 					'    "cache": [' + cacheData.cache + "],\n" +
 					'    "states": [' + cacheData.states + "]\n" +
 					'}';
-				/*
-				dataString = 
-					"{\n" +
-					'    width: ' + CACHE_WIDTH + ",\n" +
-					'    height: ' + CACHE_HEIGHT + ",\n" +
-					'    cache: [' + cache + "],\n" +
-					'    states: [' + states + "]\n" +
-					'}';
-				*/
 				//trace(dataString);
 				
 				removeEventListener(Event.ENTER_FRAME, enterFrameListener);
 				addEventListener(Event.ENTER_FRAME, resetListener);
 				enterFrameListener = resetListener;
 			}
-			/*
-			graphics.beginBitmapFill(fpsbd);
-			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
-			graphics.endFill();
-			*/
 		}
-		/*
-		private function nextFrame() : void {
-			var tmpStates : Vector.<uint> = lifeState.currentStates;
-            lifeState.currentStates = lifeState.nextStates;
-            lifeState.nextStates = tmpStates;
-            CacheDataGenerator.nextFromPrevVector(lifeState.currentStates, lifeState.nextStates, lifeState.DISPLAY_WIDTH, lifeState.DISPLAY_HEIGHT);
-		}
-        */
+        
 		private function draw(vec : Vector.<uint>, rect : Rectangle, mat : Matrix = null) : void {
-			//bd2.fillRect(bd2.rect, 0xFF000000);
-			//bd2.setVector(rect, vec);
-			//bd.fillRect(bd.rect, 0xFFFFFFFF);
-			//bd.applyFilter(bd2, bd.rect, p, filter);
             lifeState.bitmapData.setVector(rect, vec);
 			graphics.clear();
 			graphics.beginBitmapFill(lifeState.bitmapData, mat);
 			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, lifeState.FULL_DISPLAY_WIDTH, lifeState.FULL_DISPLAY_HEIGHT);
 			graphics.endFill();
-			/*
-			if (cacheIdx < NUM_CACHE_PERMUTATIONS) {
-				drawProgressBar(cacheIdx, NUM_CACHE_PERMUTATIONS, int(DISPLAY_HEIGHT * 3 / 4));
-				
-				DText.draw(bitmapData2, String(cacheIdx - 1), 10 + 10 * FULL_CACHE_WIDTH / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
-				DText.draw(bitmapData2, String((cacheIdx - 1) & masks.inner), 10 + 10 * FULL_CACHE_WIDTH / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
-
-				DText.draw(bitmapData2, String(full), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 15 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
-				DText.draw(bitmapData2, String(inner), 40 + 10 * FULL_CACHE_WIDTH * 3 / 2, 35 + 10 * FULL_CACHE_HEIGHT, DText.CENTER);
-				graphics.beginBitmapFill(bitmapData2);
-				graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
-				graphics.endFill();
-			}
-			*/
-			//drawFPS();
 		}
         
         private function drawChunkedAndNext(e : Event = null) : void {
@@ -798,23 +633,8 @@ package {
 		
 		private function drawProgressBar(cur : uint, tot : uint, y : uint) : void {
             lifeState.bitmapData.drawRect(new Rectangle(int(lifeState.DISPLAY_WIDTH / 4), y, int(lifeState.DISPLAY_WIDTH / 2), 20), ALIVE_PIXEL);
-			/*			
-			graphics.lineStyle(1, ALIVE_PIXEL);
-			graphics.drawRect(int(DISPLAY_WIDTH / 4), y, int(DISPLAY_WIDTH / 2), 20);
-			graphics.lineStyle();
-			*/
             lifeState.bitmapData.fillRect(new Rectangle(int(lifeState.DISPLAY_WIDTH / 4 + 2), y + 2, int(lifeState.DISPLAY_WIDTH / 2 - 3) * cur / tot, 17), ALIVE_PIXEL);
-			/*
-			graphics.beginFill(ALIVE_PIXEL);
-			graphics.drawRect(int(DISPLAY_WIDTH / 4 + 2), y + 2, int(DISPLAY_WIDTH / 2 - 3) * cur / tot, 17);
-			graphics.endFill();
-			*/
 			DText.draw(lifeState.bitmapData, Number(cur * 100 / tot).toFixed(1) + "%", int(lifeState.DISPLAY_WIDTH / 2), y + 3, DText.CENTER);
-			/*
-			graphics.beginBitmapFill(bitmapData2);
-			graphics.drawRect(-CACHE_WIDTH, -CACHE_HEIGHT, FULL_DISPLAY_WIDTH, FULL_DISPLAY_HEIGHT);
-			graphics.endFill();
-			*/
 		}
 		
         private var prevNumGenerated : uint = 0;
@@ -830,11 +650,6 @@ package {
             prevNumGenerated = cacheData.numGenerated;
             cacheData.numHits = 0;
 			fpsBitmapData.unlock();
-			/** /
-			graphics.beginBitmapFill(fpsbd);
-			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
-			graphics.endFill();
-			/**/
 		}
         
 		private function drawSize(e : Event = null) : void {
@@ -842,11 +657,6 @@ package {
 			sizeBitmapData.fillRect(fpsBitmapData.rect, 0x00000000);
 			DText.draw(sizeBitmapData, lifeState.DISPLAY_WIDTH + "x" + lifeState.DISPLAY_HEIGHT, sizeBitmapData.width - 1, 0, DText.RIGHT);
 			sizeBitmapData.unlock();
-			/** /
-			graphics.beginBitmapFill(fpsbd);
-			graphics.drawRect(W - fpsbd.width, 0, fpsbd.width, fpsbd.height);
-			graphics.endFill();
-			/**/
 		}
 	}
 }

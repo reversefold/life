@@ -53,20 +53,6 @@ package {
 		
 		public function write(ba : ByteArray) : void {
 			ba.writeUnsignedInt(inner);
-			/*
-			ba.writeUnsignedInt(top);
-			ba.writeUnsignedInt(bottom);
-			ba.writeUnsignedInt(left);
-			ba.writeUnsignedInt(right);
-			ba.writeUnsignedInt(topRight);
-			ba.writeUnsignedInt(topLeft);
-			ba.writeUnsignedInt(bottomRight);
-			ba.writeUnsignedInt(bottomLeft);
-			ba.writeUnsignedInt(vector.length);
-			for (var i : uint = 0; i < vector.length; ++i) {
-				ba.writeUnsignedInt(vector[i]);
-			}
-			*/
 		}
 		
 		private static var innerVector : Vector.<uint>;
@@ -85,9 +71,8 @@ package {
 					++i;
 				}
 			}
-			//state = new Chunk(CACHE_WIDTH, CACHE_HEIGHT);
-			//state.setVector(innerVector);
-			c.setVector(innerVector);
+
+            c.setVector(innerVector);
 			for each (maskName in cacheData.maskNames) {
 				c[maskName] = (cacheData.masks[maskName] & c.inner); // & inner would be the same since the masks are all for the inner rect
 				//precalculate moving this masked bit to the place it needs to be for neighbor use
@@ -98,22 +83,7 @@ package {
 				}
 			}
 
-			/*
-			c.top = ba.readUnsignedInt();
-			c.bottom = ba.readUnsignedInt();
-			c.left = ba.readUnsignedInt();
-			c.right = ba.readUnsignedInt();
-			c.topRight = ba.readUnsignedInt();
-			c.topLeft = ba.readUnsignedInt();
-			c.bottomRight = ba.readUnsignedInt();
-			c.bottomLeft = ba.readUnsignedInt();
-			var v : Vector.<uint> = new Vector.<uint>(ba.readUnsignedInt(), true);
-			for (var i : uint = 0; i < v.length; ++i) {
-				v[i] = ba.readUnsignedInt();
-			}
-			c.setVector(v);
-			*/
-			return c;
+            return c;
 		}
 	}
 }
