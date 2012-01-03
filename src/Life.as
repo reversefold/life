@@ -48,7 +48,7 @@ package {
 		public static const CACHE_HEIGHT : uint = 3;
 		/**/
         
-		[Embed(source="assets/data/3x3.bin", mimeType="application/octet-stream")]
+		//[Embed(source="assets/data/3x3.bin", mimeType="application/octet-stream")]
 		private var d : Class;
 		
 		/*

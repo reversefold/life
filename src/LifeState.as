@@ -75,8 +75,9 @@ package {
             nextStates = new Vector.<uint>(FULL_CHUNKED_LENGTH, true);
             points = new Vector.<Point>(FULL_CHUNKED_LENGTH, true);
             stateNeighbors = new Vector.<Chunk>(FULL_CHUNKED_LENGTH, true);
+            var i : uint;
             
-            for (var i : uint = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+            for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
                 points[i] = new Point(
                     i % FULL_CHUNKED_WIDTH * cacheData.CACHE_WIDTH,
                     int(int(i) / int(FULL_CHUNKED_WIDTH)) * cacheData.CACHE_HEIGHT
@@ -166,7 +167,7 @@ package {
                     break;
             }
             currentChunksToCheck = new Vector.<Boolean>(FULL_CHUNKED_LENGTH, true);
-            for (var i : uint = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
+            for (i = FULL_CHUNKED_WIDTH + 1; i < FULL_CHUNKED_LIVE_LENGTH; ++i) {
                 if ((i % FULL_CHUNKED_WIDTH) == FULL_CHUNKED_WIDTH - 1) {
                     ++i;
                     continue;
@@ -269,6 +270,7 @@ package {
                     //bitmapData.setVector(chunkRect, states[nextStates[i]].vector);
                     
                     bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, points[i]);
+
                     //cacheData.drawState(nextStates[i], bitmapData, chunkRect, points[i]);
                     
                     //bitmapData.copyPixels(cacheData.states[nextStates[i]].bitmapData, chunkRect, point);
